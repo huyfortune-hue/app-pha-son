@@ -8,40 +8,62 @@
 body {
   background-color: #f4f6f8;
   color: #333;
-  padding: 10px;
+  padding: 16px 10px;
 }
 
-/* Container chính bao bọc các Form */
 .app-container {
   width: 100% !important;
-  max-width: 900px;
+  max-width: 960px;
   margin: 0 auto;
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  padding: 16px !important;
+  padding: 20px !important;
 }
 
-/* Header & Logo BUXDA */
+/* Header */
 .app-header {
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 12px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 16px;
 }
 
-.logo-svg {
-  height: 40px;
+.brand-logo-container {
+  display: flex;
+  align-items: center;
 }
 
-/* Bố cục mặc định trên Máy tính (Nằm ngang) */
+/* Kích thước ảnh Logo trên PC */
+.app-logo-img {
+  height: 48px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Nút UPDATE */
+.btn-update {
+  background-color: #e11d48;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 22px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  width: auto !important;
+}
+
+/* Form PC (2 Cột ngang) */
 .form-grid {
   display: flex !important;
   flex-direction: row !important;
-  gap: 16px !important;
+  gap: 20px !important;
   margin-bottom: 20px;
+  align-items: stretch;
 }
 
 .form-card {
@@ -49,7 +71,18 @@ body {
   background: #fafafa;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 16px !important;
+  padding: 20px !important;
+}
+
+.color-preview-card {
+  flex: 1 1 40% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  background: #fafafa;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px !important;
 }
 
 .form-title {
@@ -57,13 +90,12 @@ body {
   font-size: 16px;
   font-weight: 700;
   color: #1e293b;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   text-transform: uppercase;
 }
 
-/* Các trường Nhập liệu */
 .form-group {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .form-group label {
@@ -76,40 +108,29 @@ body {
 
 .form-control {
   width: 100% !important;
-  padding: 10px;
+  padding: 10px 12px;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   font-size: 15px;
   outline: none;
-}
-
-/* Khung hiển thị màu DISPLAY COLORS */
-.color-preview-card {
-  flex: 1 1 40% !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  background: #fafafa;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 16px !important;
+  background-color: #ffffff;
 }
 
 .color-box {
   width: 100% !important;
-  height: 180px !important;
+  height: 200px !important;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
+  margin-top: 8px;
 }
 
-/* Group nút bấm */
 .btn-group {
   display: flex !important;
-  gap: 8px !important;
-  margin-top: 16px;
+  gap: 10px !important;
+  margin-top: 20px;
 }
 
-.btn {
+.btn-group .btn {
   flex: 1 !important;
   padding: 10px 4px !important;
   border: none;
@@ -124,9 +145,15 @@ body {
 .btn-green { background-color: #22c55e; }
 .btn-yellow { background-color: #eab308; }
 .btn-red { background-color: #ef4444; }
-.btn-blue { background-color: #2563eb; }
 
-/* Bảng kết quả công thức */
+.result-card {
+  background: #fafafa;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
 .result-table {
   width: 100% !important;
   border-collapse: collapse;
@@ -135,37 +162,47 @@ body {
 
 .result-table th, .result-table td {
   border: 1px solid #e2e8f0;
-  padding: 8px;
+  padding: 10px;
   text-align: left;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .result-table th {
   background-color: #f1f5f9;
 }
 
-/* =================================================== */
-/* CẤU HÌNH ĐẶC BIỆT CHO ĐIỆN THOẠI DI ĐỘNG (< 768px)  */
-/* =================================================== */
+/* Responsive Mobile (< 768px) */
 @media screen and (max-width: 768px) {
+  .app-container {
+    padding: 12px !important;
+  }
+
+  .app-logo-img {
+    height: 36px; /* Co nhỏ logo vừa vặn trên màn hình nhỏ */
+  }
+
+  .btn-update {
+    padding: 6px 14px;
+    font-size: 12px;
+  }
+
   .form-grid {
-    flex-direction: column !important; /* Xếp dọc toàn bộ trên mobile */
+    flex-direction: column !important; /* Xếp dọc trên điện thoại */
   }
 
   .color-preview-card {
-    order: -1 !important; /* Đưa ô màu lên phía trên Form */
     width: 100% !important;
   }
 
   .color-box {
-    height: 100px !important; /* Thu gọn chiều cao ô màu trên mobile */
+    height: 120px !important;
   }
 
   .form-card {
     width: 100% !important;
   }
 
-  .btn {
+  .btn-group .btn {
     font-size: 12px !important;
     padding: 10px 2px !important;
   }

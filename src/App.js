@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './App.css';
+import logoBuxda from './logo-buxda.png'; // Gọi đúng file logo-buxda.png
 
 export default function App() {
   const [activeForm, setActiveForm] = useState('search');
@@ -26,12 +27,12 @@ export default function App() {
     <div className="app-container">
       {/* HEADER LOGO */}
       <div className="app-header">
-        <div style={{ fontWeight: 'bold', fontSize: '20px', color: '#1e293b' }}>
-          🛡️ BUXDA FORMULAS
+        <div className="brand-logo-container">
+          <img src={logoBuxda} alt="BUXDA" className="app-logo-img" />
         </div>
+
         <button 
-          className="btn btn-red" 
-          style={{ width: 'auto', padding: '6px 16px' }}
+          className="btn-update" 
           onClick={() => setActiveForm(activeForm === 'search' ? 'update' : 'search')}
         >
           {activeForm === 'search' ? 'UPDATE' : 'SEARCH'}
@@ -93,7 +94,7 @@ export default function App() {
 
           {/* KẾT QUẢ CÔNG THỨC */}
           {searchResult && (
-            <div className="form-card" style={{ marginTop: '16px' }}>
+            <div className="result-card">
               <h4 style={{ color: '#2563eb', marginBottom: '12px' }}>
                 CÔNG THỨC CẦN PHA: {colorCode} ({colorSystem}) - Tổng khối lượng: {volume}g
               </h4>
