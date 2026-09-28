@@ -1,69 +1,69 @@
 * {
-  box-sizing: border-box;
+  box-sizing: border-box !important;
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 body {
   background-color: #f4f6f8;
   color: #333;
-  display: flex;
-  justify-content: center;
-  padding: 16px;
+  padding: 10px;
 }
 
 /* Container chính bao bọc các Form */
 .app-container {
-  width: 100%;
+  width: 100% !important;
   max-width: 900px;
+  margin: 0 auto;
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  padding: 24px;
+  padding: 16px !important;
 }
 
 /* Header & Logo BUXDA */
 .app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 20px;
   border-bottom: 1px solid #eee;
-  padding-bottom: 16px;
+  padding-bottom: 12px;
 }
 
 .logo-svg {
-  height: 48px;
+  height: 40px;
 }
 
-/* Bố cục chính cho Form 2 & Form 3: Máy tính nằm ngang, Mobile nằm dọc */
+/* Bố cục mặc định trên Máy tính (Nằm ngang) */
 .form-grid {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 20px;
-  margin-bottom: 24px;
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 16px !important;
+  margin-bottom: 20px;
 }
 
 .form-card {
+  flex: 1 1 60% !important;
   background: #fafafa;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 20px;
+  padding: 16px !important;
 }
 
 .form-title {
   text-align: center;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: #1e293b;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   text-transform: uppercase;
 }
 
-/* Các trường Nhập liệu (Input & Select) */
+/* Các trường Nhập liệu */
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .form-group label {
@@ -72,66 +72,53 @@ body {
   font-weight: 700;
   color: #475569;
   margin-bottom: 6px;
-  text-transform: uppercase;
 }
 
 .form-control {
-  width: 100%;
-  padding: 10px 12px;
+  width: 100% !important;
+  padding: 10px;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   font-size: 15px;
   outline: none;
-  transition: border-color 0.2s;
-}
-
-.form-control:focus {
-  border-color: #2563eb;
 }
 
 /* Khung hiển thị màu DISPLAY COLORS */
 .color-preview-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  flex: 1 1 40% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
   background: #fafafa;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 20px;
+  padding: 16px !important;
 }
 
 .color-box {
-  width: 100%;
-  height: 200px;
+  width: 100% !important;
+  height: 180px !important;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
-  transition: background-color 0.3s ease;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
 }
 
-/* Group nút bấm chính */
+/* Group nút bấm */
 .btn-group {
-  display: flex;
-  gap: 10px;
-  margin-top: 20px;
+  display: flex !important;
+  gap: 8px !important;
+  margin-top: 16px;
 }
 
 .btn {
-  flex: 1;
-  padding: 12px 8px;
+  flex: 1 !important;
+  padding: 10px 4px !important;
   border: none;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 13px !important;
   font-weight: 700;
   color: #ffffff;
   cursor: pointer;
-  transition: opacity 0.2s;
-  text-transform: uppercase;
-}
-
-.btn:hover {
-  opacity: 0.9;
+  text-align: center;
 }
 
 .btn-green { background-color: #22c55e; }
@@ -141,52 +128,45 @@ body {
 
 /* Bảng kết quả công thức */
 .result-table {
-  width: 100%;
+  width: 100% !important;
   border-collapse: collapse;
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .result-table th, .result-table td {
   border: 1px solid #e2e8f0;
-  padding: 10px;
+  padding: 8px;
   text-align: left;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .result-table th {
   background-color: #f1f5f9;
-  font-weight: 600;
 }
 
-/* ========================================== */
-/* RESPONSIVE CHO MÀN HÌNH ĐIỆN THOẠI (<768px) */
-/* ========================================== */
-@media (max-width: 768px) {
-  .app-container {
-    padding: 16px;
-  }
-
-  /* Chuyển bố cục từ 2 cột sang 1 cột dọc */
+/* =================================================== */
+/* CẤU HÌNH ĐẶC BIỆT CHO ĐIỆN THOẠI DI ĐỘNG (< 768px)  */
+/* =================================================== */
+@media screen and (max-width: 768px) {
   .form-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
+    flex-direction: column !important; /* Xếp dọc toàn bộ trên mobile */
   }
 
-  /* Khung xem màu cho lên phía trên Form trên Mobile */
   .color-preview-card {
-    order: -1;
+    order: -1 !important; /* Đưa ô màu lên phía trên Form */
+    width: 100% !important;
   }
 
   .color-box {
-    height: 120px; /* Thu gọn chiều cao khung màu */
+    height: 100px !important; /* Thu gọn chiều cao ô màu trên mobile */
+  }
+
+  .form-card {
+    width: 100% !important;
   }
 
   .btn {
-    font-size: 12px;
-    padding: 10px 4px;
-  }
-
-  .logo-svg {
-    height: 36px;
+    font-size: 12px !important;
+    padding: 10px 2px !important;
   }
 }
