@@ -8,7 +8,7 @@
 body {
   background-color: #f4f6f8;
   color: #333;
-  padding: 16px 10px;
+  padding: 12px 8px;
 }
 
 .app-container {
@@ -18,17 +18,17 @@ body {
   background: #ffffff;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  padding: 20px !important;
+  padding: 16px !important;
 }
 
-/* Header */
+/* Header PC */
 .app-header {
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 16px;
+  padding-bottom: 14px;
 }
 
 .brand-logo-container {
@@ -36,32 +36,48 @@ body {
   align-items: center;
 }
 
-/* Kích thước ảnh Logo trên PC */
 .app-logo-img {
-  height: 48px;
+  height: 40px;
   width: auto;
   object-fit: contain;
 }
 
-/* Nút UPDATE */
-.btn-update {
-  background-color: #e11d48;
-  color: #ffffff;
-  border: none;
+/* Nút Header */
+.btn-header {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
   border-radius: 6px;
-  padding: 8px 22px;
+  padding: 8px 16px;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
-  width: auto !important;
 }
 
-/* Form PC (2 Cột ngang) */
+.btn-header.active {
+  background-color: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.btn-red-bg {
+  background-color: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+.btn-header.active-red {
+  background-color: #dc2626;
+  color: #ffffff;
+  border-color: #b91c1c;
+}
+
+/* Bố cục Form PC */
 .form-grid {
   display: flex !important;
   flex-direction: row !important;
-  gap: 20px !important;
+  gap: 16px !important;
   margin-bottom: 20px;
   align-items: stretch;
 }
@@ -71,7 +87,7 @@ body {
   background: #fafafa;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 20px !important;
+  padding: 16px !important;
 }
 
 .color-preview-card {
@@ -82,20 +98,20 @@ body {
   background: #fafafa;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 20px !important;
+  padding: 16px !important;
 }
 
 .form-title {
   text-align: center;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #1e293b;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   text-transform: uppercase;
 }
 
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .form-group label {
@@ -118,16 +134,17 @@ body {
 
 .color-box {
   width: 100% !important;
-  height: 200px !important;
+  height: 180px !important;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
   margin-top: 8px;
 }
 
+/* Nút bấm trong Form */
 .btn-group {
   display: flex !important;
-  gap: 10px !important;
-  margin-top: 20px;
+  gap: 8px !important;
+  margin-top: 18px;
 }
 
 .btn-group .btn {
@@ -146,51 +163,74 @@ body {
 .btn-yellow { background-color: #eab308; }
 .btn-red { background-color: #ef4444; }
 
+/* Bảng kết quả */
 .result-card {
   background: #fafafa;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 20px;
-  margin-top: 20px;
+  padding: 16px;
+  margin-top: 16px;
 }
 
 .result-table {
   width: 100% !important;
   border-collapse: collapse;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .result-table th, .result-table td {
   border: 1px solid #e2e8f0;
   padding: 10px;
   text-align: left;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .result-table th {
   background-color: #f1f5f9;
 }
 
-/* Responsive Mobile (< 768px) */
+/* ========================================== */
+/* OPTIMIZE DÀNH RIÊNG CHO ĐIỆN THOẠI (< 768px) */
+/* ========================================== */
 @media screen and (max-width: 768px) {
   .app-container {
     padding: 12px !important;
   }
 
+  /* Header tách dòng trên mobile */
+  .app-header {
+    flex-direction: column !important;
+    gap: 12px;
+    align-items: stretch !important;
+  }
+
+  .brand-logo-container {
+    justify-content: center;
+  }
+
   .app-logo-img {
-    height: 36px; /* Co nhỏ logo vừa vặn trên màn hình nhỏ */
+    height: 38px;
   }
 
-  .btn-update {
-    padding: 6px 14px;
-    font-size: 12px;
+  /* Bộ nút TRA CỨU & UPDATE tràn chiều ngang */
+  .app-header > div:last-child {
+    display: flex;
+    width: 100%;
   }
 
+  .btn-header {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    font-size: 14px;
+  }
+
+  /* Xếp dọc các Form */
   .form-grid {
-    flex-direction: column !important; /* Xếp dọc trên điện thoại */
+    flex-direction: column !important;
   }
 
-  .color-preview-card {
+  .form-card, .color-preview-card {
     width: 100% !important;
   }
 
@@ -198,41 +238,8 @@ body {
     height: 120px !important;
   }
 
-  .form-card {
-    width: 100% !important;
-  }
-
   .btn-group .btn {
-    font-size: 12px !important;
-    padding: 10px 2px !important;
+    font-size: 13px !important;
+    padding: 12px 2px !important;
   }
-}/* Styling cho các nút chuyển Tab Header */
-.btn-header {
-  background-color: #f1f5f9;
-  color: #475569;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.btn-header.active {
-  background-color: #2563eb;
-  color: #ffffff;
-  border-color: #2563eb;
-}
-
-.btn-red-bg {
-  background-color: #ef4444;
-  color: #ffffff;
-  border-color: #ef4444;
-}
-
-.btn-header.active-red {
-  background-color: #dc2626;
-  color: #ffffff;
-  border-color: #b91c1c;
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
 }
