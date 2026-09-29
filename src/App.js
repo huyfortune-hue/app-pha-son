@@ -139,7 +139,7 @@ export default function App() {
           <div className="form-title">ĐĂNG NHẬP HỆ THỐNG</div>
           <form onSubmit={handleLogin}>
             <div className="form-group">
-              <label>TÀI KHOẢN (USER):</label>
+              <label>TÀI KHOẢN:</label>
               <input
                 type="text"
                 className="form-control"
@@ -150,7 +150,7 @@ export default function App() {
               />
             </div>
             <div className="form-group">
-              <label>MẬT KHẨU (PASSWORD):</label>
+              <label>MẬT KHẨU:</label>
               <input
                 type="password"
                 className="form-control"
@@ -161,7 +161,7 @@ export default function App() {
               />
             </div>
             <div className="btn-group" style={{ marginTop: '20px' }}>
-              <button type="submit" className="btn btn-green">LOGIN</button>
+              <button type="submit" className="btn btn-green">ĐĂNG NHẬP</button>
             </div>
           </form>
         </div>
@@ -173,7 +173,7 @@ export default function App() {
           <div className="form-grid">
             <div className="form-card">
               <div className="form-group">
-                <label>COLOR SYSTEM:</label>
+                <label>CHỌN HỆ MÀU:</label>
                 <select
                   className="form-control"
                   value={colorSystem}
@@ -186,7 +186,7 @@ export default function App() {
               </div>
 
               <div className="form-group">
-                <label>COLOR CODE:</label>
+                <label>MÃ MÀU:</label>
                 <input
                   type="text"
                   className="form-control"
@@ -197,7 +197,7 @@ export default function App() {
               </div>
 
               <div className="form-group">
-                <label>VOLUME/GRAM:</label>
+                <label>KHỐI LƯỢNG/GRAM:</label>
                 <input
                   type="number"
                   className="form-control"
@@ -207,7 +207,7 @@ export default function App() {
               </div>
 
               <div className="form-group">
-                <label>ENTER NAME:</label>
+                <label>NHẬP TÊN:</label>
                 <input
                   type="text"
                   className={`form-control ${colorSystem !== 'CUSTOMER' ? 'disabled-input' : ''}`}
@@ -220,21 +220,21 @@ export default function App() {
 
               {/* BỘ 3 NÚT CHÍNH */}
               <div className="btn-group">
-                <button type="button" className="btn btn-green" onClick={handleSearch}>SEARCH</button>
-                <button type="button" className="btn btn-yellow" onClick={handleResetForm2}>RESET</button>
-                <button type="button" className="btn btn-red" onClick={handleExitApp}>EXIT</button>
+                <button type="button" className="btn btn-green" onClick={handleSearch}>TÌM KIẾM</button>
+                <button type="button" className="btn btn-yellow" onClick={handleResetForm2}>LÀM MỚI</button>
+                <button type="button" className="btn btn-red" onClick={handleExitApp}>THOÁT</button>
               </div>
 
               {/* DỜI NÚT BACK & UPDATE XUỐNG DƯỚI 3 NÚT TRÊN ĐIỆN THOẠI */}
               <div className="btn-group mobile-only-flex" style={{ marginTop: '10px' }}>
-                <button type="button" className="btn btn-blue" onClick={() => setCurrentForm(2)}>BACK</button>
-                <button type="button" className="btn btn-red" onClick={() => setCurrentForm(3)}>UPDATE</button>
+                <button type="button" className="btn btn-blue" onClick={() => setCurrentForm(2)}>QUAY LẠI</button>
+                <button type="button" className="btn btn-red" onClick={() => setCurrentForm(3)}>CẬP NHẬT</button>
               </div>
             </div>
 
             {/* KHUNG VẼ LẠI MÀU BẰNG MÃ HEX */}
             <div className="color-preview-card">
-              <div className="form-title">DISPLAY COLORS</div>
+              <div className="form-title">HIỂN THỊ MÀU</div>
               <div className="color-box" style={{ backgroundColor: previewHex }}></div>
             </div>
           </div>
@@ -288,7 +288,7 @@ export default function App() {
             </div>
 
             <div className="form-group">
-              <label>ENTER NAME:</label>
+              <label>NHẬP TÊN:</label>
               <input
                 type="text"
                 className={`form-control ${optionUpdate !== 'CUSTOMER' ? 'disabled-input' : ''}`}
@@ -300,7 +300,7 @@ export default function App() {
             </div>
 
             <div className="form-group">
-              <label>FIND HEX CODE:</label>
+              <label>TÌM MÃ HEX:</label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
@@ -316,7 +316,7 @@ export default function App() {
             </div>
 
             <div className="form-group">
-              <label>COLOR/HEX:</label>
+              <label>MÃ MÀU/HEX:</label>
               <input
                 type="text"
                 className="form-control"
@@ -328,7 +328,7 @@ export default function App() {
             </div>
 
             <div className="form-group">
-              <label>NỘI DUNG CÔNG THỨC PHA:</label>
+              <label>NHẬP CÔNG THỨC PHA:</label>
               <textarea
                 className="form-control"
                 rows="4"
@@ -340,10 +340,10 @@ export default function App() {
             </div>
 
             <div className="btn-group">
-              <button type="submit" className="btn btn-green">SAVE</button>
-              <button type="button" className="btn btn-blue" onClick={() => setCurrentForm(2)}>BACK</button>
-              <button type="button" className="btn btn-yellow" onClick={handleResetForm3}>RESET</button>
-              <button type="button" className="btn btn-red" onClick={handleExitApp}>EXIT</button>
+              <button type="submit" className="btn btn-green">LƯU</button>
+              <button type="button" className="btn btn-blue" onClick={() => setCurrentForm(2)}>QUAY LẠI</button>
+              <button type="button" className="btn btn-yellow" onClick={handleResetForm3}>LÀM MỚI</button>
+              <button type="button" className="btn btn-red" onClick={handleExitApp}>THOÁT</button>
             </div>
           </form>
         </div>
