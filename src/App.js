@@ -181,7 +181,7 @@ export default function App() {
                 >
                   <option value="RAL COLOR">RAL COLOR</option>
                   <option value="PANTONE COLOR">PANTONE COLOR</option>
-                  <option value="CUSTOMER">CUSTOMER</option>
+                  <option value="CUSTOMER">KHÁCH HÀNG</option>
                 </select>
               </div>
 
