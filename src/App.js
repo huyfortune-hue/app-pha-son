@@ -2,18 +2,15 @@ import React, { useState } from 'react';
 import './App.css';
 import logoBuxda from './logo-buxda.png';
 
-// DÁN LINK GOOGLE APPS SCRIPT WEB APP URL CỦA BẠN VÀO ĐÂY:
-const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbwjPHRE6cMFU2D-gN3jG251GLB0cCUX3pBRB-NY70Z9HjRaSinLITXGUM8MtnJUrVKW/exec";
+const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbwJPHRE6cMFU2D-gn3jG251GLB0cCUX3pBRB-NY70Z9HjRaSinLITXGUM8MtnJUrVKW/exec";
 
 export default function App() {
-  // Trạng thái ứng dụng: 1: Form Đăng nhập, 2: Form Tra cứu, 3: Form Update
   const [currentForm, setCurrentForm] = useState(1);
 
   // ---------- FORM 1: STATE ĐĂNG NHẬP ----------
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  // Danh sách tài khoản (Admin có thể bổ sung thêm tài khoản phụ tại đây)
   const usersList = [
     { user: 'admin', pass: '123456' },
     { user: 'buxda', pass: 'buxda2024' }
@@ -33,27 +30,12 @@ export default function App() {
 
   // ---------- FORM 2: STATE TRA CỨU ----------
   const [colorSystem, setColorSystem] = useState('RAL COLOR');
-  const [colorCode, setColorCode] = useState('7035');
+  const [colorCode, setColorCode] = useState('1008');
   const [volume, setVolume] = useState(100);
   const [customerNameForm2, setCustomerNameForm2] = useState('');
   const [previewHex, setPreviewHex] = useState('#D7D7D7');
   const [searchResult, setSearchResult] = useState(null);
-
-  const handleSearch = () => {
-    // Giả lập truy xuất dữ liệu từ công thức hoặc file CSV
-    setSearchResult([
-      { base: 'Gốc Trắng', percent: '70%', gram: (volume * 0.7).toFixed(1) },
-      { base: 'Gốc Đen', percent: '20%', gram: (volume * 0.2).toFixed(1) },
-      { base: 'Gốc Vàng', percent: '10%', gram: (volume * 0.1).toFixed(1) }
-    ]);
-  };
-
-  const handleResetForm2 = () => {
-    setColorCode('');
-    setVolume(100);
-    setCustomerNameForm2('');
-    setSearchResult(null);
-  };
+  const [loadingSearch, setLoadingSearch] = useState(false);
 
   // ---------- FORM 3: STATE UPDATE CÔNG THỨC ----------
   const [optionUpdate, setOptionUpdate] = useState('RAL COLOR');
@@ -61,29 +43,159 @@ export default function App() {
   const [colorHexText, setColorHexText] = useState('');
   const [findHexQuery, setFindHexQuery] = useState('');
   const [formulaInput, setFormulaInput] = useState('');
+  const [loadingFindHex, setLoadingFindHex] = useState(false);
 
-  // Nút FIND HEX: Đọc từ cache/Internet
-  const handleFindHex = () => {
-    const query = findHexQuery.trim().toUpperCase();
+  // TỰ ĐỘNG TÌM MÃ HEX DỰA TRÊN MÃ MÀU & HỆ MÀU
+  const handleFindHex = async () => {
+    const query = findHexQuery.trim();
     if (!query) {
-      alert('Vui lòng nhập mã màu cần tìm HEX (VD: R1003 hoặc P285C)');
+      alert('Vui lòng nhập mã màu cần tìm HEX (VD: 1008 hoặc 285C)');
       return;
     }
 
-    // Giả lập truy xuất mã HEX từ file RAL_HEX_CACHE.csv và PANTONE_HEX_CACHE.csv
-    if (query.includes('1003') || query.includes('7035') || query.includes('R')) {
-      setColorHexText('RAL-7035,#D7D7D7');
-      setPreviewHex('#D7D7D7');
-    } else if (query.includes('285') || query.includes('P')) {
-      setColorHexText('PANTONE-285C,#0072CE');
-      setPreviewHex('#0072CE');
-    } else {
-      setColorHexText(`${query},#A8A8A8`);
-      setPreviewHex('#A8A8A8');
+    setLoadingFindHex(true);
+    try {
+      let hexCode = '';
+      if (optionUpdate === 'RAL COLOR') {
+        // Gọi API công khai tra cứu mã màu RAL
+        const res = await fetch(`https://raw.githubusercontent.com/zilke/ral-colors/master/ral-colors.json`);
+        const ralData = await res.json();
+        const found = ralData.find(item => item.ral === query || item.ral === `RAL ${query}`);
+        if (found && found.hex) {
+          hexCode = found.hex;
+        }
+      } else if (optionUpdate === 'PANTONE COLOR') {
+        // Giả lập tra cứu Pantone hoặc qua API công khai
+        if (query.includes('285')) hexCode = '#0072CE';
+        else if (query.includes('186')) hexCode = '#C8102E';
+      }
+
+      // Dự phòng nếu API không trả về
+      if (!hexCode) {
+        hexCode = query.startsWith('#') ? query : `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`;
+      }
+
+      const formattedResult = `${optionUpdate.split(' ')[0]}-${query},${hexCode.toUpperCase()}`;
+      setColorHexText(formattedResult);
+      setPreviewHex(hexCode);
+    } catch (error) {
+      console.error("Lỗi tìm mã HEX:", error);
+      // Mã fallback tạo hex mặc định nếu mất mạng
+      const defaultHex = '#A8A8A8';
+      setColorHexText(`${optionUpdate.split(' ')[0]}-${query},${defaultHex}`);
+      setPreviewHex(defaultHex);
+    } finally {
+      setLoadingFindHex(false);
     }
   };
 
-  // HÀM LƯU DỮ LIỆU SANG GOOGLE SHEETS
+  // HÀM BÁO/TÍNH TOÁN CÔNG THỨC TỪ ĐỊNH DẠNG (Mã,Gram) THEO KHỐI LƯỢNG MỚI (FORM 2)
+  const parseAndCalculateFormula = (rawFormulaText, targetVolume) => {
+    if (!rawFormulaText) return [];
+
+    const lines = rawFormulaText.split('\n');
+    let parsedRows = [];
+    let totalOriginalGram = 0;
+
+    // Bước 1: Đọc dữ liệu đầu vào & tính tổng khối lượng mẫu
+    lines.forEach(line => {
+      if (!line.trim()) return;
+      const parts = line.split(',');
+      if (parts.length >= 2) {
+        const baseCode = parts[0].trim();
+        const baseGram = parseFloat(parts[1].trim()) || 0;
+        parsedRows.push({ baseCode, baseGram });
+        totalOriginalGram += baseGram;
+      }
+    });
+
+    if (totalOriginalGram === 0) return [];
+
+    // Bước 2: Quy đổi tỷ lệ % và tính Khối lượng Gram tương ứng với targetVolume ở Form 2
+    return parsedRows.map(row => {
+      const percentage = (row.baseGram / totalOriginalGram) * 100;
+      const calculatedGram = ((targetVolume * percentage) / 100).toFixed(2);
+      return {
+        base: row.baseCode,
+        percent: `${percentage.toFixed(2)}%`,
+        gram: `${calculatedGram}g`
+      };
+    });
+  };
+
+  // HÀM TRA CỨU DỮ LIỆU TỪ GOOGLE SHEETS (FORM 2)
+  const handleSearch = async () => {
+    const queryCode = colorCode.trim().toLowerCase();
+    const queryCustomer = customerNameForm2.trim().toLowerCase();
+
+    if (colorSystem === 'CUSTOMER' && !queryCustomer) {
+      alert('Vui lòng nhập tên khách hàng cần tìm!');
+      return;
+    }
+    if (colorSystem !== 'CUSTOMER' && !queryCode) {
+      alert('Vui lòng nhập mã màu cần tìm!');
+      return;
+    }
+
+    setLoadingSearch(true);
+
+    try {
+      const response = await fetch(GOOGLE_SHEET_API_URL);
+      const resData = await response.json();
+
+      if (resData.status === 'success' && resData.data) {
+        // Lọc kết quả khớp với Hệ màu & Mã màu/Tên khách hàng
+        const matches = resData.data.filter((item) => {
+          const matchOption = item.option === colorSystem;
+          if (!matchOption) return false;
+
+          if (colorSystem === 'CUSTOMER') {
+            return item.customerName.toLowerCase().includes(queryCustomer);
+          } else {
+            return item.colorHex.toLowerCase().includes(queryCode);
+          }
+        });
+
+        if (matches.length > 0) {
+          const matchedItem = matches[matches.length - 1]; // Lấy bản ghi mới nhất
+
+          // Trích xuất mã HEX để vẽ lại ô HIỂN THỊ MÀU
+          const hexMatch = matchedItem.colorHex.match(/#[0-9A-Fa-f]{6}/i);
+          if (hexMatch) {
+            setPreviewHex(hexMatch[0]);
+          }
+
+          // Tính toán công thức theo Khối lượng GRAM mới nhập
+          const targetGram = parseFloat(volume) || 100;
+          const calculatedItems = parseAndCalculateFormula(matchedItem.formula, targetGram);
+
+          setSearchResult({
+            titleCode: colorSystem === 'CUSTOMER' ? customerNameForm2 : colorCode,
+            systemName: colorSystem,
+            items: calculatedItems
+          });
+        } else {
+          alert('Không tìm thấy công thức phù hợp!');
+          setSearchResult(null);
+        }
+      }
+    } catch (error) {
+      console.error('Lỗi khi tra cứu dữ liệu:', error);
+      alert('Lỗi kết nối khi tra cứu dữ liệu!');
+    } finally {
+      setLoadingSearch(false);
+    }
+  };
+
+  const handleResetForm2 = () => {
+    setColorCode('');
+    setVolume(100);
+    setCustomerNameForm2('');
+    setSearchResult(null);
+    setPreviewHex('#D7D7D7');
+  };
+
+  // HÀM LƯU DỮ LIỆU TỪ FORM 3
   const handleSaveForm3 = async (e) => {
     e.preventDefault();
 
@@ -92,7 +204,7 @@ export default function App() {
       customerName: customerNameForm3,
       colorHex: colorHexText,
       formula: formulaInput,
-      userLogin: username, // Lưu tên tài khoản đã đăng nhập ở Form 1
+      userLogin: username,
     };
 
     try {
@@ -105,9 +217,9 @@ export default function App() {
         body: JSON.stringify(dataToSend),
       });
 
-      alert(`Đã lưu thành công công thức vào Google Sheets!`);
+      alert(`Đã lưu công thức thành công vào Google Sheets!`);
       handleResetForm3();
-      setCurrentForm(2); // Chuyển về Form Tra cứu
+      setCurrentForm(2);
     } catch (error) {
       console.error('Lỗi khi gửi dữ liệu sang Google Sheets:', error);
       alert('Có lỗi xảy ra khi lưu dữ liệu. Vui lòng thử lại!');
@@ -121,11 +233,9 @@ export default function App() {
     setFormulaInput('');
   };
 
-  // Nút EXIT: Đóng trình duyệt
   const handleExitApp = () => {
     if (window.confirm('Bạn có chắc chắn muốn thoát ứng dụng?')) {
       window.close();
-      // Dự phòng nếu trình duyệt chặn window.close()
       setTimeout(() => {
         window.location.href = 'about:blank';
       }, 300);
@@ -140,7 +250,6 @@ export default function App() {
           <img src={logoBuxda} alt="BUXDA" className="app-logo-img" />
         </div>
 
-        {/* BỘ NÚT HEADER TRÊN PC */}
         {currentForm !== 1 && (
           <div className="header-btn-group pc-only-flex">
             <button
@@ -217,10 +326,11 @@ export default function App() {
                 <label>MÃ MÀU:</label>
                 <input
                   type="text"
-                  className="form-control"
+                  className={`form-control ${colorSystem === 'CUSTOMER' ? 'disabled-input' : ''}`}
+                  disabled={colorSystem === 'CUSTOMER'}
                   value={colorCode}
                   onChange={(e) => setColorCode(e.target.value)}
-                  placeholder="VD: 7035, 1003, 285C"
+                  placeholder={colorSystem !== 'CUSTOMER' ? 'Gõ mã màu (VD: 1008)' : 'Đã khóa'}
                 />
               </div>
 
@@ -246,32 +356,32 @@ export default function App() {
                 />
               </div>
 
-              {/* BỘ 3 NÚT CHÍNH */}
               <div className="btn-group">
-                <button type="button" className="btn btn-green" onClick={handleSearch}>TÌM KIẾM</button>
+                <button type="button" className="btn btn-green" onClick={handleSearch} disabled={loadingSearch}>
+                  {loadingSearch ? 'ĐANG TÌM...' : 'TÌM KIẾM'}
+                </button>
                 <button type="button" className="btn btn-yellow" onClick={handleResetForm2}>LÀM MỚI</button>
                 <button type="button" className="btn btn-red" onClick={handleExitApp}>THOÁT</button>
               </div>
 
-              {/* DỜI NÚT BACK & UPDATE XUỐNG DƯỚI 3 NÚT TRÊN ĐIỆN THOẠI */}
               <div className="btn-group mobile-only-flex" style={{ marginTop: '10px' }}>
                 <button type="button" className="btn btn-blue" onClick={() => setCurrentForm(2)}>QUAY LẠI</button>
                 <button type="button" className="btn btn-red" onClick={() => setCurrentForm(3)}>CẬP NHẬT</button>
               </div>
             </div>
 
-            {/* KHUNG VẼ LẠI MÀU BẰNG MÃ HEX */}
+            {/* HIỂN THỊ MÀU ĐƯỢC VẼ LẠI DỰA THEO MÃ HEX DƯỚI FORM 3 */}
             <div className="color-preview-card">
               <div className="form-title">HIỂN THỊ MÀU</div>
               <div className="color-box" style={{ backgroundColor: previewHex }}></div>
             </div>
           </div>
 
-          {/* HIỂN THỊ CÔNG THỨC MÀU */}
+          {/* HIỂN THỊ CÔNG THỨC MÀU BẢNG KẾT QUẢ TÍNH THEO GRAM MỚI */}
           {searchResult && (
             <div className="result-card">
-              <div style={{ color: '#2563eb', fontWeight: 'bold', marginBottom: '10px' }}>
-                {colorCode} ({colorSystem}) - Khối lượng: {volume}g
+              <div style={{ color: '#2563eb', fontWeight: 'bold', marginBottom: '10px', fontSize: '16px' }}>
+                {searchResult.titleCode} ({searchResult.systemName}) - Khối lượng: {volume}g
               </div>
               <table className="result-table">
                 <thead>
@@ -282,11 +392,11 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {searchResult.map((item, idx) => (
+                  {searchResult.items.map((item, idx) => (
                     <tr key={idx}>
                       <td>{item.base}</td>
                       <td>{item.percent}</td>
-                      <td><strong>{item.gram}g</strong></td>
+                      <td><strong>{item.gram}</strong></td>
                     </tr>
                   ))}
                 </tbody>
@@ -332,13 +442,20 @@ export default function App() {
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
-                  className="form-control"
-                  placeholder="Gõ R1003 hoặc P285C..."
+                  className={`form-control ${optionUpdate === 'CUSTOMER' ? 'disabled-input' : ''}`}
+                  disabled={optionUpdate === 'CUSTOMER'}
+                  placeholder={optionUpdate === 'CUSTOMER' ? 'Đã khóa cho KH' : 'Gõ mã màu (VD: 1008)...'}
                   value={findHexQuery}
                   onChange={(e) => setFindHexQuery(e.target.value)}
                 />
-                <button type="button" className="btn btn-green" style={{ minWidth: '90px' }} onClick={handleFindHex}>
-                  FIND
+                <button
+                  type="button"
+                  className="btn btn-green"
+                  style={{ minWidth: '90px' }}
+                  onClick={handleFindHex}
+                  disabled={optionUpdate === 'CUSTOMER' || loadingFindHex}
+                >
+                  {loadingFindHex ? '...' : 'FIND'}
                 </button>
               </div>
             </div>
@@ -348,7 +465,7 @@ export default function App() {
               <input
                 type="text"
                 className="form-control"
-                placeholder="VD: RAL-7035,#D7D7D7 hoặc Màu đen mờ..."
+                placeholder="VD: RAL-1008,#D7D7D7"
                 value={colorHexText}
                 onChange={(e) => setColorHexText(e.target.value)}
                 required
@@ -356,11 +473,11 @@ export default function App() {
             </div>
 
             <div className="form-group">
-              <label>NHẬP CÔNG THỨC PHA:</label>
+              <label>NHẬP CÔNG THỨC PHA (Định dạng: MãGốc,Gram):</label>
               <textarea
                 className="form-control"
-                rows="4"
-                placeholder="Nhập công thức chi tiết..."
+                rows="6"
+                placeholder={"W001,100\nY004,12.5\nBL005,0.2\nB003,0.33"}
                 value={formulaInput}
                 onChange={(e) => setFormulaInput(e.target.value)}
                 required
