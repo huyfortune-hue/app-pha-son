@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import './App.css';
 import logoBuxda from './logo-buxda.png';
 
+// DÁN LINK GOOGLE APPS SCRIPT WEB APP URL CỦA BẠN VÀO ĐÂY:
+const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbwjPHRE6cMFU2D-gN3jG251GLB0cCUX3pBRB-NY70Z9HjRaSinLITXGUM8MtnJUrVKW/exec";
+
 export default function App() {
   // Trạng thái ứng dụng: 1: Form Đăng nhập, 2: Form Tra cứu, 3: Form Update
   const [currentForm, setCurrentForm] = useState(1);
@@ -80,10 +83,35 @@ export default function App() {
     }
   };
 
-  const handleSaveForm3 = (e) => {
+  // HÀM LƯU DỮ LIỆU SANG GOOGLE SHEETS
+  const handleSaveForm3 = async (e) => {
     e.preventDefault();
-    alert(`Đã lưu dữ liệu thành công cho hệ thống ${optionUpdate}!`);
-    setCurrentForm(2);
+
+    const dataToSend = {
+      option: optionUpdate,
+      customerName: customerNameForm3,
+      colorHex: colorHexText,
+      formula: formulaInput,
+      userLogin: username, // Lưu tên tài khoản đã đăng nhập ở Form 1
+    };
+
+    try {
+      await fetch(GOOGLE_SHEET_API_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dataToSend),
+      });
+
+      alert(`Đã lưu thành công công thức vào Google Sheets!`);
+      handleResetForm3();
+      setCurrentForm(2); // Chuyển về Form Tra cứu
+    } catch (error) {
+      console.error('Lỗi khi gửi dữ liệu sang Google Sheets:', error);
+      alert('Có lỗi xảy ra khi lưu dữ liệu. Vui lòng thử lại!');
+    }
   };
 
   const handleResetForm3 = () => {
@@ -272,7 +300,7 @@ export default function App() {
       {currentForm === 3 && (
         <div className="form-card" style={{ maxWidth: '650px', margin: '0 auto' }}>
           <div className="form-title">CẬP NHẬT CÔNG THỨC MỚI</div>
-          
+
           <form onSubmit={handleSaveForm3}>
             <div className="form-group">
               <label>OPTION:</label>
