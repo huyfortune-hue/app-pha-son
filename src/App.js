@@ -45,18 +45,17 @@ function App() {
     });
   }, []);
 
-  // HÀM CHUẨN HÓA CHUỖI TÌM KIẾM (XÓA TOÀN BỘ DẤU NGOẶC, NHÁY, KHOẢNG TRẮNG, GẠCH DƯỚI)
+  // HÀM CHUẨN HÓA CHUỖI TÌM KIẾM
   const cleanSearchString = (str) => {
     return String(str || '')
       .toLowerCase()
       .replace(/[\[\]'"\s\-_]/g, '');
   };
 
-  // HÀM TÌM VÀ LÀM SẠCH MÃ HEX
+  // HÀM LẤY VÀ LÀM SẠCH MÃ HEX
   const extractHexFromRow = (row) => {
     if (!row) return '#FFFFFF';
     const values = Object.values(row);
-    // Tìm giá trị có chứa dấu # hoặc định dạng Hex
     const hexVal = values.find(
       (v) => typeof v === 'string' && (v.includes('#') || /^[0-9A-Fa-f]{6}$/.test(String(v).replace(/[\[\]'"\s]/g, '')))
     );
@@ -69,7 +68,7 @@ function App() {
     return cleaned ? `#${cleaned}` : '#FFFFFF';
   };
 
-  // HÀM TÌM MÃ MÀU HIỂN THỊ
+  // HÀM TÌM TÊN/MÃ TỪ ROW CSV
   const extractCodeFromRow = (row, defaultKw) => {
     if (!row) return defaultKw;
     for (const key of Object.keys(row)) {
@@ -82,6 +81,26 @@ function App() {
     }
     const firstVal = Object.values(row)[0];
     return firstVal ? String(firstVal).replace(/[\[\]'"\s]/g, ' ').trim() : defaultKw;
+  };
+
+  // ---------------------------------------------------------------------------
+  // HÀM TÌM KIẾM MÃ HEX ONLINE KHI DỮ LIỆU CSV KHÔNG CÓ
+  // ---------------------------------------------------------------------------
+  const fetchOnlineHex = async (query, systemType) => {
+    try {
+      // Gọi API công cộng tra cứu Pantone/RAL
+      const searchTerm = encodeURIComponent(`${systemType} ${query}`);
+      const response = await fetch(`https://api.color.pizza/v1/?name=${searchTerm}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.colors && data.colors.length > 0) {
+          return data.colors[0].hex; // Trả về hex tìm thấy
+        }
+      }
+    } catch (e) {
+      console.log('Lỗi truy vấn Internet:', e);
+    }
+    return null;
   };
 
   // ---------------------------------------------------------------------------
@@ -119,7 +138,7 @@ function App() {
     setSearchResultFormula('');
   };
 
-  const handleSearchForm2 = () => {
+  const handleSearchForm2 = async () => {
     if (!colorCode.trim()) {
       alert('Vui lòng nhập mã màu!');
       return;
@@ -141,7 +160,7 @@ function App() {
       targetCache = [...ralHexCache, ...pantoneHexCache];
     }
 
-    // Tim trong Cache
+    // 1. Tìm trong Cache CSV
     const foundHexItem = targetCache.find((row) => {
       return Object.values(row).some((val) => {
         const cleanVal = cleanSearchString(val);
@@ -152,7 +171,13 @@ function App() {
     if (foundHexItem) {
       setDisplayHex(extractHexFromRow(foundHexItem));
     } else {
-      setDisplayHex('#CCCCCC');
+      // 2. Tự động tìm trên Internet nếu CSV không có
+      const onlineHex = await fetchOnlineHex(colorCode, colorSystem);
+      if (onlineHex) {
+        setDisplayHex(onlineHex);
+      } else {
+        setDisplayHex('#CCCCCC');
+      }
     }
 
     // Tìm công thức
@@ -194,7 +219,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 4. FORM 3: CẬP NHẬT CÔNG THỨC (FIX TÌM KIẾM BẤT KỲ MÃ PANTONE)
+  // 4. FORM 3: CẬP NHẬT CÔNG THỨC (CÓ TÌM ONINE INTERNET)
   // ---------------------------------------------------------------------------
   const [optionForm3, setOptionForm3] = useState('RAL COLOR');
   const [customerNameForm3, setCustomerNameForm3] = useState('');
@@ -202,6 +227,7 @@ function App() {
   const [findHexInput, setFindHexInput] = useState('');
   const [formulaInputForm3, setFormulaInputForm3] = useState('');
   const [previewHexForm3, setPreviewHexForm3] = useState('#FFFFFF');
+  const [isSearchingOnline, setIsSearchingOnline] = useState(false);
 
   const handleResetForm3 = () => {
     setOptionForm3('RAL COLOR');
@@ -212,29 +238,23 @@ function App() {
     setPreviewHexForm3('#FFFFFF');
   };
 
-  const handleFindHexForm3 = () => {
+  const handleFindHexForm3 = async () => {
     if (!findHexInput.trim()) {
       alert('Vui lòng nhập từ khóa tìm kiếm mã HEX!');
       return;
     }
 
     const rawKw = findHexInput.trim();
-    const cleanKw = cleanSearchString(rawKw); // VD: "135c" -> "135c"
+    const cleanKw = cleanSearchString(rawKw);
 
     let cache = optionForm3 === 'PANTONE COLOR' ? pantoneHexCache : ralHexCache;
     let prefix = optionForm3 === 'PANTONE COLOR' ? 'PANTONE' : 'RAL';
 
-    if (!cache || cache.length === 0) {
-      alert(`Dữ liệu ${prefix} HEX Cache chưa được tải thành công!`);
-      return;
-    }
-
-    // TÌM KIẾM THÔNG THOÁNG TOÀN BỘ CÁC CỘT TRONG FILE CSV
+    // 1. TÌM TRONG FILE CSV DỮ LIỆU
     let foundRow = cache.find((row) => {
       return Object.values(row).some((val) => {
         const cleanVal = cleanSearchString(val);
         if (!cleanVal) return false;
-
         return (
           cleanVal === cleanKw ||
           cleanVal === `pantone${cleanKw}` ||
@@ -249,10 +269,22 @@ function App() {
       const hexVal = extractHexFromRow(foundRow);
       const codeVal = extractCodeFromRow(foundRow, rawKw);
 
-      setColorHexResultForm3(`${prefix}-${codeVal},${hexVal}`);
+      setColorHexResultForm3(`${prefix}-${codeVal.toUpperCase()},${hexVal}`);
       setPreviewHexForm3(hexVal);
+      return;
+    }
+
+    // 2. NẾU KHÔNG CÓ TRONG CSV -> TỰ ĐỘNG TÌM KIẾM TRÊN INTERNET
+    setIsSearchingOnline(true);
+    const onlineHex = await fetchOnlineHex(rawKw, prefix);
+    setIsSearchingOnline(false);
+
+    if (onlineHex) {
+      setColorHexResultForm3(`${prefix}-${rawKw.toUpperCase()},${onlineHex}`);
+      setPreviewHexForm3(onlineHex);
+      alert(`Đã tìm thấy mã HEX cho "${rawKw}" trực tuyến trên Internet: ${onlineHex}`);
     } else {
-      alert(`Không tìm thấy mã HEX phù hợp cho "${rawKw}" trong dữ liệu ${prefix}!`);
+      alert(`Không tìm thấy mã HEX cho "${rawKw}" trên CSV lẫn Internet!`);
       setPreviewHexForm3('#FFFFFF');
     }
   };
@@ -347,7 +379,7 @@ function App() {
               <input
                 type="text"
                 style={styles.textInput}
-                placeholder="Ví dụ: 1003, 7035, 285..."
+                placeholder="Ví dụ: 1003, 7035, 227..."
                 value={colorCode}
                 onChange={(e) => setColorCode(e.target.value)}
               />
@@ -447,12 +479,19 @@ function App() {
                 <input
                   type="text"
                   style={{ ...styles.textInput, flex: 1 }}
-                  placeholder="Gõ mã màu để tìm (Ví dụ: 135c, 285)..."
+                  placeholder="Gõ mã màu (VD: 227, 135c)..."
                   value={findHexInput}
                   onChange={(e) => setFindHexInput(e.target.value)}
                 />
-                <button style={styles.btnFind} onClick={handleFindHexForm3}>
-                  TÌM MÃ
+                <button
+                  style={{
+                    ...styles.btnFind,
+                    backgroundColor: isSearchingOnline ? '#6c757d' : '#28a745',
+                  }}
+                  onClick={handleFindHexForm3}
+                  disabled={isSearchingOnline}
+                >
+                  {isSearchingOnline ? 'ĐANG TÌM...' : 'TÌM MÃ'}
                 </button>
               </div>
             </div>
@@ -462,7 +501,7 @@ function App() {
               <input
                 type="text"
                 style={styles.textInput}
-                placeholder="Ví dụ: PANTONE-135C,#F6D068"
+                placeholder="Ví dụ: PANTONE-227,#AA0061"
                 value={colorHexResultForm3}
                 onChange={(e) => setColorHexResultForm3(e.target.value)}
               />
@@ -637,7 +676,6 @@ const styles = {
   },
   btnFind: {
     padding: '10px 16px',
-    backgroundColor: '#28a745',
     color: '#fff',
     border: 'none',
     borderRadius: '6px',
