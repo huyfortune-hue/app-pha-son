@@ -77,6 +77,13 @@ function App() {
     setSearchResultFormula('');
   };
 
+  const cleanHexValue = (rawHex) => {
+    if (!rawHex) return '#FFFFFF';
+    let cleaned = String(rawHex).replace(/[\[\]'"\s]/g, '').trim();
+    cleaned = cleaned.replace(/^#+/, '');
+    return cleaned ? `#${cleaned}` : '#FFFFFF';
+  };
+
   const handleSearchForm2 = () => {
     if (!colorCode.trim()) {
       alert('Vui lòng nhập mã màu!');
@@ -108,11 +115,10 @@ function App() {
         foundHexItem.Hex ||
         foundHexItem.HEX_CODE ||
         foundHexItem.hex ||
-        Object.values(foundHexItem).find((val) => typeof val === 'string' && val.trim().startsWith('#')) ||
+        Object.values(foundHexItem).find((val) => typeof val === 'string' && val.includes('#')) ||
         '#FFFFFF';
 
-      const cleanHex = hex.trim().startsWith('#') ? hex.trim() : `#${hex.trim()}`;
-      setDisplayHex(cleanHex);
+      setDisplayHex(cleanHexValue(hex));
     } else {
       setDisplayHex('#CCCCCC');
     }
@@ -156,7 +162,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 4. FORM 3: CẬP NHẬT CÔNG THỨC MỚI (ĐÃ FIX TÌM MÃ HEX)
+  // 4. FORM 3: CẬP NHẬT CÔNG THỨC MỚI (ĐÃ FIX HEX CHO RAL & PANTONE)
   // ---------------------------------------------------------------------------
   const [optionForm3, setOptionForm3] = useState('RAL COLOR');
   const [customerNameForm3, setCustomerNameForm3] = useState('');
@@ -179,47 +185,72 @@ function App() {
       alert('Vui lòng nhập từ khóa tìm kiếm mã HEX!');
       return;
     }
-    const kw = findHexInput.trim().toLowerCase();
-    
+
+    // Chuẩn hóa chuỗi để so sánh
+    const normalizeStr = (str) => String(str || '').toLowerCase().replace(/[\s\-_]/g, '');
+
+    const rawKw = findHexInput.trim();
+    const cleanKw = normalizeStr(rawKw);
+
     let cache = optionForm3 === 'PANTONE COLOR' ? pantoneHexCache : ralHexCache;
     let prefix = optionForm3 === 'PANTONE COLOR' ? 'PANTONE' : 'RAL';
 
     if (!cache || cache.length === 0) {
-      alert('Dữ liệu HEX Cache chưa được tải thành công!');
+      alert(`Dữ liệu ${prefix} HEX Cache chưa được tải thành công!`);
       return;
     }
 
-    const found = cache.find((item) =>
-      Object.values(item).some((v) => String(v).trim().toLowerCase() === kw || String(v).trim().toLowerCase().includes(kw))
-    );
+    // 1. Tìm dòng tương ứng trong Cache
+    let found = cache.find((item) => {
+      return Object.values(item).some((val) => {
+        const normalizedVal = normalizeStr(val);
+        if (!normalizedVal) return false;
+
+        return (
+          normalizedVal === cleanKw ||
+          normalizedVal === `pantone${cleanKw}` ||
+          normalizedVal === `ral${cleanKw}` ||
+          cleanKw.includes(normalizedVal) ||
+          normalizedVal.includes(cleanKw)
+        );
+      });
+    });
 
     if (found) {
+      // 2. Lấy mã màu (CODE)
       const code =
         found.CODE ||
         found.Code ||
         found.COLOR_CODE ||
-        found.RAL_CODE ||
         found.PANTONE_CODE ||
+        found.RAL_CODE ||
         found.code ||
-        findHexInput.trim();
+        found.Name ||
+        found.NAME ||
+        rawKw;
 
+      // 3. Lấy giá trị HEX thô
       let rawHex =
         found.HEX ||
         found.Hex ||
         found.HEX_CODE ||
         found.hex ||
-        Object.values(found).find((val) => typeof val === 'string' && val.trim().startsWith('#')) ||
+        Object.values(found).find(
+          (val) => typeof val === 'string' && val.includes('#')
+        ) ||
         '';
 
       if (rawHex) {
-        const cleanHex = rawHex.trim().startsWith('#') ? rawHex.trim() : `#${rawHex.trim()}`;
-        setColorHexResultForm3(`${prefix}-${code},${cleanHex}`);
+        // Làm sạch ngoặc vuông, dấu nháy, khoảng trắng
+        const cleanHex = cleanHexValue(rawHex);
+
+        setColorHexResultForm3(`${prefix}-${code.toString().trim()},${cleanHex}`);
         setPreviewHexForm3(cleanHex);
       } else {
-        alert('Tìm thấy mã màu nhưng không có giá trị HEX tương ứng!');
+        alert('Tìm thấy mã màu nhưng không tìm thấy giá trị HEX!');
       }
     } else {
-      alert(`Không tìm thấy mã HEX cho từ khóa "${findHexInput}" trong bộ nhớ Cache!`);
+      alert(`Không tìm thấy mã HEX cho từ khóa "${rawKw}" trong dữ liệu ${prefix}!`);
       setPreviewHexForm3('#FFFFFF');
     }
   };
