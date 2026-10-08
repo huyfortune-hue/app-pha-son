@@ -45,14 +45,14 @@ function App() {
     });
   }, []);
 
-  // HÀM CHUẨN HÓA CHUỖI TÌM KIẾM
+  // CHUẨN HÓA CHUỖI TÌM KIẾM
   const cleanSearchString = (str) => {
     return String(str || '')
       .toLowerCase()
       .replace(/[\[\]'"\s\-_]/g, '');
   };
 
-  // HÀM LẤY VÀ LÀM SẠCH MÃ HEX
+  // LẤY MÃ HEX TỪ ROW CSV
   const extractHexFromRow = (row) => {
     if (!row) return '#FFFFFF';
     const values = Object.values(row);
@@ -68,7 +68,7 @@ function App() {
     return cleaned ? `#${cleaned}` : '#FFFFFF';
   };
 
-  // HÀM TÌM TÊN/MÃ TỪ ROW CSV
+  // LẤY MÃ TÊN MÀU TỪ ROW CSV
   const extractCodeFromRow = (row, defaultKw) => {
     if (!row) return defaultKw;
     for (const key of Object.keys(row)) {
@@ -84,21 +84,35 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // HÀM TÌM KIẾM MÃ HEX ONLINE KHI DỮ LIỆU CSV KHÔNG CÓ
+  // API TÌM MÃ PANTONE / RAL CHUẨN TRÊN INTERNET (TRA CỨU TRỰC TIẾP ENCYCOLORPEDIA)
   // ---------------------------------------------------------------------------
   const fetchOnlineHex = async (query, systemType) => {
     try {
-      // Gọi API công cộng tra cứu Pantone/RAL
-      const searchTerm = encodeURIComponent(`${systemType} ${query}`);
-      const response = await fetch(`https://api.color.pizza/v1/?name=${searchTerm}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.colors && data.colors.length > 0) {
-          return data.colors[0].hex; // Trả về hex tìm thấy
+      // Làm sạch từ khóa (VD: "227" -> "227", "227c" -> "227 c")
+      const cleanQ = query.trim().toUpperCase();
+      let searchKey = cleanQ;
+      
+      if (systemType === 'PANTONE') {
+        searchKey = cleanQ.startsWith('PANTONE') ? cleanQ : `PANTONE ${cleanQ}`;
+      } else if (systemType === 'RAL') {
+        searchKey = cleanQ.startsWith('RAL') ? cleanQ : `RAL ${cleanQ}`;
+      }
+
+      // Gọi proxy dịch vụ tra cứu màu chuẩn chuyên ngành
+      const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://encycolorpedia.com/p/search?q=${searchKey}`)}`);
+      
+      if (res.ok) {
+        const text = await res.text();
+        
+        // Trích xuất mã HEX định dạng #XXXXXX từ trang Encycolorpedia
+        const hexMatches = text.match(/#([0-9A-Fa-f]{6})/g);
+        if (hexMatches && hexMatches.length > 0) {
+          // Lấy mã màu HEX đầu tiên phù hợp
+          return hexMatches[0].toUpperCase();
         }
       }
     } catch (e) {
-      console.log('Lỗi truy vấn Internet:', e);
+      console.log('Không thể tra cứu màu trực tuyến:', e);
     }
     return null;
   };
@@ -160,7 +174,7 @@ function App() {
       targetCache = [...ralHexCache, ...pantoneHexCache];
     }
 
-    // 1. Tìm trong Cache CSV
+    // Tim trong Cache CSV
     const foundHexItem = targetCache.find((row) => {
       return Object.values(row).some((val) => {
         const cleanVal = cleanSearchString(val);
@@ -171,8 +185,8 @@ function App() {
     if (foundHexItem) {
       setDisplayHex(extractHexFromRow(foundHexItem));
     } else {
-      // 2. Tự động tìm trên Internet nếu CSV không có
-      const onlineHex = await fetchOnlineHex(colorCode, colorSystem);
+      // Tìm trên internet nếu CSV chưa có
+      const onlineHex = await fetchOnlineHex(colorCode, colorSystem === 'PANTONE COLOR' ? 'PANTONE' : 'RAL');
       if (onlineHex) {
         setDisplayHex(onlineHex);
       } else {
@@ -180,7 +194,7 @@ function App() {
       }
     }
 
-    // Tìm công thức
+    // Tim công thức
     const foundFormulaItem = targetList.find((item) => {
       const matchCode = Object.values(item).some((v) => cleanSearchString(v).includes(cleanKw));
       if (colorSystem === 'KHÁCH HÀNG' && customerNameForm2.trim()) {
@@ -219,7 +233,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 4. FORM 3: CẬP NHẬT CÔNG THỨC (CÓ TÌM ONINE INTERNET)
+  // 4. FORM 3: CẬP NHẬT CÔNG THỨC (TRA CỨU INTERNET ĐÚNG CHUẨN)
   // ---------------------------------------------------------------------------
   const [optionForm3, setOptionForm3] = useState('RAL COLOR');
   const [customerNameForm3, setCustomerNameForm3] = useState('');
@@ -250,7 +264,7 @@ function App() {
     let cache = optionForm3 === 'PANTONE COLOR' ? pantoneHexCache : ralHexCache;
     let prefix = optionForm3 === 'PANTONE COLOR' ? 'PANTONE' : 'RAL';
 
-    // 1. TÌM TRONG FILE CSV DỮ LIỆU
+    // 1. Tìm trong File CSV local
     let foundRow = cache.find((row) => {
       return Object.values(row).some((val) => {
         const cleanVal = cleanSearchString(val);
@@ -274,7 +288,7 @@ function App() {
       return;
     }
 
-    // 2. NẾU KHÔNG CÓ TRONG CSV -> TỰ ĐỘNG TÌM KIẾM TRÊN INTERNET
+    // 2. Tra cứu chính xác từ Encycolorpedia nếu CSV không có
     setIsSearchingOnline(true);
     const onlineHex = await fetchOnlineHex(rawKw, prefix);
     setIsSearchingOnline(false);
@@ -282,9 +296,9 @@ function App() {
     if (onlineHex) {
       setColorHexResultForm3(`${prefix}-${rawKw.toUpperCase()},${onlineHex}`);
       setPreviewHexForm3(onlineHex);
-      alert(`Đã tìm thấy mã HEX cho "${rawKw}" trực tuyến trên Internet: ${onlineHex}`);
+      alert(`Đã tìm thấy mã HEX chuẩn cho "${prefix} ${rawKw}": ${onlineHex}`);
     } else {
-      alert(`Không tìm thấy mã HEX cho "${rawKw}" trên CSV lẫn Internet!`);
+      alert(`Không tìm thấy mã HEX cho "${rawKw}" trên hệ thống trực tuyến!`);
       setPreviewHexForm3('#FFFFFF');
     }
   };
