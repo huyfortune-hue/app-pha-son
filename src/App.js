@@ -22,8 +22,7 @@ function App() {
           skipEmptyLines: 'greedy',
           trimHeaders: true,
           complete: (res) => {
-            // Lọc bỏ các dòng trống hoặc không hợp lệ
-            const validData = (res.data || []).filter(row => Object.keys(row).length > 0);
+            const validData = (res.data || []).filter((row) => Object.keys(row).length > 0);
             resolve(validData);
           },
           error: () => resolve([]),
@@ -46,42 +45,43 @@ function App() {
     });
   }, []);
 
-  // HÀM LÀM SẠCH VÀ CHUẨN HÓA MÃ HEX
-  const cleanHexValue = (rawHex) => {
-    if (!rawHex) return '#FFFFFF';
-    let cleaned = String(rawHex)
-      .replace(/[\[\]'"\s]/g, '') // Lọc sạch ngoặc vuông, nháy đơn/kép, khoảng trắng
+  // HÀM CHUẨN HÓA CHUỖI TÌM KIẾM (XÓA TOÀN BỘ DẤU NGOẶC, NHÁY, KHOẢNG TRẮNG, GẠCH DƯỚI)
+  const cleanSearchString = (str) => {
+    return String(str || '')
+      .toLowerCase()
+      .replace(/[\[\]'"\s\-_]/g, '');
+  };
+
+  // HÀM TÌM VÀ LÀM SẠCH MÃ HEX
+  const extractHexFromRow = (row) => {
+    if (!row) return '#FFFFFF';
+    const values = Object.values(row);
+    // Tìm giá trị có chứa dấu # hoặc định dạng Hex
+    const hexVal = values.find(
+      (v) => typeof v === 'string' && (v.includes('#') || /^[0-9A-Fa-f]{6}$/.test(String(v).replace(/[\[\]'"\s]/g, '')))
+    );
+    if (!hexVal) return '#FFFFFF';
+
+    let cleaned = String(hexVal)
+      .replace(/[\[\]'"\s]/g, '')
       .trim();
-    cleaned = cleaned.replace(/^#+/, ''); // Xóa toàn bộ dấu # ở đầu nếu có
+    cleaned = cleaned.replace(/^#+/, '');
     return cleaned ? `#${cleaned}` : '#FFFFFF';
   };
 
-  // HÀM LẤY MÃ HEX TỪ DÒNG CSV (BẤT KỂ TÊN CỘT LÀ GÌ)
-  const extractHexFromRow = (row) => {
-    if (!row) return '#FFFFFF';
-    // Tìm theo tên cột phổ biến
+  // HÀM TÌM MÃ MÀU HIỂN THỊ
+  const extractCodeFromRow = (row, defaultKw) => {
+    if (!row) return defaultKw;
     for (const key of Object.keys(row)) {
       const cleanKey = key.trim().toUpperCase();
-      if (cleanKey === 'HEX' || cleanKey === 'HEX_CODE' || cleanKey === 'COLOR_HEX') {
-        if (row[key]) return cleanHexValue(row[key]);
+      if (['CODE', 'COLOR_CODE', 'PANTONE_CODE', 'RAL_CODE', 'NAME'].includes(cleanKey)) {
+        if (row[key]) {
+          return String(row[key]).replace(/[\[\]'"\s]/g, ' ').trim();
+        }
       }
     }
-    // Nếu không khớp tên cột, tìm giá trị có chứa dấu # hoặc chuỗi Hex
-    const values = Object.values(row);
-    const hexVal = values.find(v => typeof v === 'string' && (v.includes('#') || /^[0-9A-Fa-f]{6}$/.test(v.trim())));
-    return hexVal ? cleanHexValue(hexVal) : '#FFFFFF';
-  };
-
-  // HÀM LẤY MÃ COLOR CODE TỪ DÒNG CSV
-  const extractCodeFromRow = (row) => {
-    if (!row) return '';
-    for (const key of Object.keys(row)) {
-      const cleanKey = key.trim().toUpperCase();
-      if (cleanKey === 'CODE' || cleanKey === 'COLOR_CODE' || cleanKey === 'PANTONE_CODE' || cleanKey === 'RAL_CODE' || cleanKey === 'NAME') {
-        if (row[key]) return String(row[key]).trim();
-      }
-    }
-    return String(Object.values(row)[0] || '').trim();
+    const firstVal = Object.values(row)[0];
+    return firstVal ? String(firstVal).replace(/[\[\]'"\s]/g, ' ').trim() : defaultKw;
   };
 
   // ---------------------------------------------------------------------------
@@ -106,7 +106,7 @@ function App() {
   const [colorCode, setColorCode] = useState('');
   const [volumeGram, setVolumeGram] = useState('1000');
   const [customerNameForm2, setCustomerNameForm2] = useState('');
-  
+
   const [displayHex, setDisplayHex] = useState('#FFFFFF');
   const [searchResultFormula, setSearchResultFormula] = useState('');
 
@@ -125,8 +125,7 @@ function App() {
       return;
     }
 
-    const normalizeStr = (str) => String(str || '').toLowerCase().replace(/[\s\-_]/g, '');
-    const cleanKw = normalizeStr(colorCode.trim());
+    const cleanKw = cleanSearchString(colorCode);
 
     let targetList = [];
     let targetCache = [];
@@ -142,10 +141,12 @@ function App() {
       targetCache = [...ralHexCache, ...pantoneHexCache];
     }
 
-    // Tìm Hex trong Cache
+    // Tim trong Cache
     const foundHexItem = targetCache.find((row) => {
-      const code = normalizeStr(extractCodeFromRow(row));
-      return code === cleanKw || code === `pantone${cleanKw}` || code === `ral${cleanKw}` || code.startsWith(cleanKw);
+      return Object.values(row).some((val) => {
+        const cleanVal = cleanSearchString(val);
+        return cleanVal === cleanKw || cleanVal.includes(cleanKw) || cleanKw.includes(cleanVal);
+      });
     });
 
     if (foundHexItem) {
@@ -154,9 +155,9 @@ function App() {
       setDisplayHex('#CCCCCC');
     }
 
-    // Tìm Công thức pha màu
+    // Tìm công thức
     const foundFormulaItem = targetList.find((item) => {
-      const matchCode = Object.values(item).some((v) => normalizeStr(v).includes(cleanKw));
+      const matchCode = Object.values(item).some((v) => cleanSearchString(v).includes(cleanKw));
       if (colorSystem === 'KHÁCH HÀNG' && customerNameForm2.trim()) {
         const matchName = String(item.CUSTOMER_NAME || '').toLowerCase().includes(customerNameForm2.trim().toLowerCase());
         return matchCode && matchName;
@@ -193,7 +194,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 4. FORM 3: CẬP NHẬT CÔNG THỨC (ĐÃ TỐI ƯU TÌM PANTONE CHÍNH XÁC)
+  // 4. FORM 3: CẬP NHẬT CÔNG THỨC (FIX TÌM KIẾM BẤT KỲ MÃ PANTONE)
   // ---------------------------------------------------------------------------
   const [optionForm3, setOptionForm3] = useState('RAL COLOR');
   const [customerNameForm3, setCustomerNameForm3] = useState('');
@@ -217,44 +218,39 @@ function App() {
       return;
     }
 
-    const normalizeStr = (str) => String(str || '').toLowerCase().replace(/[\s\-_]/g, '');
     const rawKw = findHexInput.trim();
-    const cleanKw = normalizeStr(rawKw); // VD: "285"
+    const cleanKw = cleanSearchString(rawKw); // VD: "135c" -> "135c"
 
     let cache = optionForm3 === 'PANTONE COLOR' ? pantoneHexCache : ralHexCache;
     let prefix = optionForm3 === 'PANTONE COLOR' ? 'PANTONE' : 'RAL';
 
     if (!cache || cache.length === 0) {
-      alert(`Dữ liệu ${prefix} HEX Cache chưa được tải thành công! Kiểm tra file CSV trong thư mục public.`);
+      alert(`Dữ liệu ${prefix} HEX Cache chưa được tải thành công!`);
       return;
     }
 
-    // Lọc danh sách kèm thông tin mã & hex chuẩn
-    const parsedList = cache.map((row) => ({
-      row,
-      code: extractCodeFromRow(row),
-      cleanCode: normalizeStr(extractCodeFromRow(row)),
-      hex: extractHexFromRow(row),
-    }));
+    // TÌM KIẾM THÔNG THOÁNG TOÀN BỘ CÁC CỘT TRONG FILE CSV
+    let foundRow = cache.find((row) => {
+      return Object.values(row).some((val) => {
+        const cleanVal = cleanSearchString(val);
+        if (!cleanVal) return false;
 
-    // Tìm kiếm chính xác từng cấp độ
-    let match =
-      // 1. Khớp hoàn toàn (VD: "285" === "285")
-      parsedList.find((item) => item.cleanCode === cleanKw) ||
-      // 2. Khớp hậu tố chuẩn Pantone (VD: "285c", "285u", "pantone285")
-      parsedList.find((item) => 
-        item.cleanCode === `${cleanKw}c` || 
-        item.cleanCode === `${cleanKw}u` ||
-        item.cleanCode === `pantone${cleanKw}` ||
-        item.cleanCode === `pantone${cleanKw}c`
-      ) ||
-      // 3. Khớp bắt đầu bằng từ khóa
-      parsedList.find((item) => item.cleanCode.startsWith(cleanKw));
+        return (
+          cleanVal === cleanKw ||
+          cleanVal === `pantone${cleanKw}` ||
+          cleanVal === `ral${cleanKw}` ||
+          cleanVal.includes(cleanKw) ||
+          cleanKw.includes(cleanVal)
+        );
+      });
+    });
 
-    if (match && match.hex && match.hex !== '#FFFFFF') {
-      const codeDisplay = match.code || rawKw;
-      setColorHexResultForm3(`${prefix}-${codeDisplay},${match.hex}`);
-      setPreviewHexForm3(match.hex);
+    if (foundRow) {
+      const hexVal = extractHexFromRow(foundRow);
+      const codeVal = extractCodeFromRow(foundRow, rawKw);
+
+      setColorHexResultForm3(`${prefix}-${codeVal},${hexVal}`);
+      setPreviewHexForm3(hexVal);
     } else {
       alert(`Không tìm thấy mã HEX phù hợp cho "${rawKw}" trong dữ liệu ${prefix}!`);
       setPreviewHexForm3('#FFFFFF');
@@ -451,7 +447,7 @@ function App() {
                 <input
                   type="text"
                   style={{ ...styles.textInput, flex: 1 }}
-                  placeholder="Gõ mã màu để tìm..."
+                  placeholder="Gõ mã màu để tìm (Ví dụ: 135c, 285)..."
                   value={findHexInput}
                   onChange={(e) => setFindHexInput(e.target.value)}
                 />
@@ -466,7 +462,7 @@ function App() {
               <input
                 type="text"
                 style={styles.textInput}
-                placeholder="Ví dụ: PANTONE-285,#0072CE"
+                placeholder="Ví dụ: PANTONE-135C,#F6D068"
                 value={colorHexResultForm3}
                 onChange={(e) => setColorHexResultForm3(e.target.value)}
               />
