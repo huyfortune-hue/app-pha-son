@@ -45,17 +45,24 @@ function App() {
     });
   }, []);
 
-  // CHUẨN HÓA CHUỖI TÌM KIẾM
+  // CHUẨN HÓA CHUỖI TÌM KIẾM (Bỏ dấu, khoảng trắng, ký tự đặc biệt)
   const cleanSearchString = (str) => {
     return String(str || '')
       .toLowerCase()
       .replace(/[\[\]'"\s\-_]/g, '');
   };
 
+  // CHỈ LẤY CÁC CHỮ SỐ TRONG CHUỖI (VD: "PANTONE 227 C" -> "227")
+  const extractDigits = (str) => {
+    const num = String(str || '').match(/\d+/);
+    return num ? num[0] : '';
+  };
+
   // LẤY MÃ HEX TỪ ROW CSV
   const extractHexFromRow = (row) => {
     if (!row) return '#FFFFFF';
     const values = Object.values(row);
+    // Tìm giá trị có chứa # hoặc chuỗi 6 ký tự HEX
     const hexVal = values.find(
       (v) => typeof v === 'string' && (v.includes('#') || /^[0-9A-Fa-f]{6}$/.test(String(v).replace(/[\[\]'"\s]/g, '')))
     );
@@ -68,7 +75,7 @@ function App() {
     return cleaned ? `#${cleaned}` : '#FFFFFF';
   };
 
-  // LẤY MÃ TÊN MÀU TỪ ROW CSV
+  // LẤY TÊN MÃ MÀU TỪ ROW CSV
   const extractCodeFromRow = (row, defaultKw) => {
     if (!row) return defaultKw;
     for (const key of Object.keys(row)) {
@@ -84,11 +91,47 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // API TÌM MÃ PANTONE / RAL CHUẨN TRÊN INTERNET (TRA CỨU TRỰC TIẾP ENCYCOLORPEDIA)
+  // THUẬT TOÁN TÌM KIẾM TRONG CSV THÔNG MINH & ƯU TIÊN CAO NHẤT
+  // ---------------------------------------------------------------------------
+  const findInLocalCache = (query, cacheList) => {
+    if (!query || !cacheList || cacheList.length === 0) return null;
+
+    const rawKw = query.trim();
+    const cleanKw = cleanSearchString(rawKw);
+    const digitsKw = extractDigits(rawKw);
+
+    // Bước 1: Tìm chính xác tuyệt đối (Exact Match sau khi làm sạch)
+    let found = cacheList.find((row) =>
+      Object.values(row).some((val) => cleanSearchString(val) === cleanKw)
+    );
+    if (found) return found;
+
+    // Bước 2: Tìm theo số hiệu màu Pantone (Số khớp hoàn toàn, ví dụ "227" khớp "Pantone 227 C")
+    if (digitsKw) {
+      found = cacheList.find((row) =>
+        Object.values(row).some((val) => {
+          const valDigits = extractDigits(val);
+          return valDigits && valDigits === digitsKw;
+        })
+      );
+      if (found) return found;
+    }
+
+    // Bước 3: Tìm chứa chuỗi (Contains Match)
+    found = cacheList.find((row) =>
+      Object.values(row).some((val) => {
+        const cVal = cleanSearchString(val);
+        return cVal && (cVal.includes(cleanKw) || cleanKw.includes(cVal));
+      })
+    );
+    return found || null;
+  };
+
+  // ---------------------------------------------------------------------------
+  // API TÌM MÃ CHUYÊN NGÀNH TRÊN INTERNET (CHỈ DÙNG KHI FILE LOCAL KHÔNG CÓ)
   // ---------------------------------------------------------------------------
   const fetchOnlineHex = async (query, systemType) => {
     try {
-      // Làm sạch từ khóa (VD: "227" -> "227", "227c" -> "227 c")
       const cleanQ = query.trim().toUpperCase();
       let searchKey = cleanQ;
       
@@ -98,16 +141,12 @@ function App() {
         searchKey = cleanQ.startsWith('RAL') ? cleanQ : `RAL ${cleanQ}`;
       }
 
-      // Gọi proxy dịch vụ tra cứu màu chuẩn chuyên ngành
       const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://encycolorpedia.com/p/search?q=${searchKey}`)}`);
       
       if (res.ok) {
         const text = await res.text();
-        
-        // Trích xuất mã HEX định dạng #XXXXXX từ trang Encycolorpedia
         const hexMatches = text.match(/#([0-9A-Fa-f]{6})/g);
         if (hexMatches && hexMatches.length > 0) {
-          // Lấy mã màu HEX đầu tiên phù hợp
           return hexMatches[0].toUpperCase();
         }
       }
@@ -158,8 +197,6 @@ function App() {
       return;
     }
 
-    const cleanKw = cleanSearchString(colorCode);
-
     let targetList = [];
     let targetCache = [];
 
@@ -174,18 +211,13 @@ function App() {
       targetCache = [...ralHexCache, ...pantoneHexCache];
     }
 
-    // Tim trong Cache CSV
-    const foundHexItem = targetCache.find((row) => {
-      return Object.values(row).some((val) => {
-        const cleanVal = cleanSearchString(val);
-        return cleanVal === cleanKw || cleanVal.includes(cleanKw) || cleanKw.includes(cleanVal);
-      });
-    });
+    // ƯU TIÊN BƯỚC 1: Tìm trong File CSV Cache trước
+    const foundHexItem = findInLocalCache(colorCode, targetCache);
 
     if (foundHexItem) {
       setDisplayHex(extractHexFromRow(foundHexItem));
     } else {
-      // Tìm trên internet nếu CSV chưa có
+      // BƯỚC 2: Nếu file CSV local không có mới tìm trên Internet
       const onlineHex = await fetchOnlineHex(colorCode, colorSystem === 'PANTONE COLOR' ? 'PANTONE' : 'RAL');
       if (onlineHex) {
         setDisplayHex(onlineHex);
@@ -194,7 +226,8 @@ function App() {
       }
     }
 
-    // Tim công thức
+    // Tìm công thức
+    const cleanKw = cleanSearchString(colorCode);
     const foundFormulaItem = targetList.find((item) => {
       const matchCode = Object.values(item).some((v) => cleanSearchString(v).includes(cleanKw));
       if (colorSystem === 'KHÁCH HÀNG' && customerNameForm2.trim()) {
@@ -233,7 +266,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 4. FORM 3: CẬP NHẬT CÔNG THỨC (TRA CỨU INTERNET ĐÚNG CHUẨN)
+  // 4. FORM 3: CẬP NHẬT CÔNG THỨC (TRA CỨU TRONG CSV TRƯỚC)
   // ---------------------------------------------------------------------------
   const [optionForm3, setOptionForm3] = useState('RAL COLOR');
   const [customerNameForm3, setCustomerNameForm3] = useState('');
@@ -259,25 +292,11 @@ function App() {
     }
 
     const rawKw = findHexInput.trim();
-    const cleanKw = cleanSearchString(rawKw);
-
     let cache = optionForm3 === 'PANTONE COLOR' ? pantoneHexCache : ralHexCache;
     let prefix = optionForm3 === 'PANTONE COLOR' ? 'PANTONE' : 'RAL';
 
-    // 1. Tìm trong File CSV local
-    let foundRow = cache.find((row) => {
-      return Object.values(row).some((val) => {
-        const cleanVal = cleanSearchString(val);
-        if (!cleanVal) return false;
-        return (
-          cleanVal === cleanKw ||
-          cleanVal === `pantone${cleanKw}` ||
-          cleanVal === `ral${cleanKw}` ||
-          cleanVal.includes(cleanKw) ||
-          cleanKw.includes(cleanVal)
-        );
-      });
-    });
+    // 1. ƯU TIÊN TUYỆT ĐỐI: Tìm trong File CSV local
+    const foundRow = findInLocalCache(rawKw, cache);
 
     if (foundRow) {
       const hexVal = extractHexFromRow(foundRow);
@@ -288,7 +307,7 @@ function App() {
       return;
     }
 
-    // 2. Tra cứu chính xác từ Encycolorpedia nếu CSV không có
+    // 2. CHỈ KHI FILE LOCAL KHÔNG CÓ -> Mới tra cứu Internet
     setIsSearchingOnline(true);
     const onlineHex = await fetchOnlineHex(rawKw, prefix);
     setIsSearchingOnline(false);
@@ -296,9 +315,9 @@ function App() {
     if (onlineHex) {
       setColorHexResultForm3(`${prefix}-${rawKw.toUpperCase()},${onlineHex}`);
       setPreviewHexForm3(onlineHex);
-      alert(`Đã tìm thấy mã HEX chuẩn cho "${prefix} ${rawKw}": ${onlineHex}`);
+      alert(`Đã tìm thấy mã HEX cho "${prefix} ${rawKw}" trực tuyến: ${onlineHex}`);
     } else {
-      alert(`Không tìm thấy mã HEX cho "${rawKw}" trên hệ thống trực tuyến!`);
+      alert(`Không tìm thấy mã HEX cho "${rawKw}" trong file CSV local lẫn trực tuyến!`);
       setPreviewHexForm3('#FFFFFF');
     }
   };
