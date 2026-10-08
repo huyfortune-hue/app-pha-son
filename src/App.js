@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 
 function App() {
-  // Trạng thái Form hiện tại: 'form1' (Đăng nhập), 'form2' (Tra cứu), 'form3' (Cập nhật)
   const [currentForm, setCurrentForm] = useState('form1');
 
   // ---------------------------------------------------------------------------
@@ -42,6 +41,16 @@ function App() {
     });
   }, []);
 
+  // HÀM LÀM SẠCH MÃ HEX TRIỆT ĐỂ (XÓA [, ], ', ", KHỎANG TRẮNG)
+  const cleanHexValue = (rawHex) => {
+    if (!rawHex) return '#FFFFFF';
+    let cleaned = String(rawHex)
+      .replace(/[\[\]'"\s]/g, '') // Lọc bỏ dấu ngoặc vuông, nháy đơn/kép, khoảng trắng
+      .trim();
+    cleaned = cleaned.replace(/^#+/, ''); // Xóa toàn bộ dấu # ở đầu nếu có
+    return cleaned ? `#${cleaned}` : '#FFFFFF';
+  };
+
   // ---------------------------------------------------------------------------
   // 2. FORM 1: ĐĂNG NHẬP
   // ---------------------------------------------------------------------------
@@ -58,7 +67,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 3. FORM 2: TRA CỨU & BẢNG CÔNG THỨC
+  // 3. FORM 2: TRA CỨU MÀU (ĐÃ FIX TOÀN BỘ PANTONE / RAL HEX)
   // ---------------------------------------------------------------------------
   const [colorSystem, setColorSystem] = useState('RAL COLOR');
   const [colorCode, setColorCode] = useState('');
@@ -75,13 +84,6 @@ function App() {
     setCustomerNameForm2('');
     setDisplayHex('#FFFFFF');
     setSearchResultFormula('');
-  };
-
-  const cleanHexValue = (rawHex) => {
-    if (!rawHex) return '#FFFFFF';
-    let cleaned = String(rawHex).replace(/[\[\]'"\s]/g, '').trim();
-    cleaned = cleaned.replace(/^#+/, '');
-    return cleaned ? `#${cleaned}` : '#FFFFFF';
   };
 
   const handleSearchForm2 = () => {
@@ -105,12 +107,13 @@ function App() {
       targetCache = [...ralHexCache, ...pantoneHexCache];
     }
 
-    // 1. Tìm Hex Color
+    // 1. Tìm Hex Color trong Cache
     const foundHexItem = targetCache.find((item) =>
       Object.values(item).some((v) => String(v).toLowerCase().includes(cleanCode))
     );
+
     if (foundHexItem) {
-      const hex =
+      const rawHex =
         foundHexItem.HEX ||
         foundHexItem.Hex ||
         foundHexItem.HEX_CODE ||
@@ -118,12 +121,13 @@ function App() {
         Object.values(foundHexItem).find((val) => typeof val === 'string' && val.includes('#')) ||
         '#FFFFFF';
 
-      setDisplayHex(cleanHexValue(hex));
+      // Làm sạch mã HEX trước khi đưa vào State
+      setDisplayHex(cleanHexValue(rawHex));
     } else {
       setDisplayHex('#CCCCCC');
     }
 
-    // 2. Tìm Công thức
+    // 2. Tìm Công thức pha màu
     const foundFormulaItem = targetList.find((item) => {
       const matchCode = Object.values(item).some((v) => String(v).toLowerCase().includes(cleanCode));
       if (colorSystem === 'KHÁCH HÀNG' && customerNameForm2.trim()) {
@@ -162,7 +166,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 4. FORM 3: CẬP NHẬT CÔNG THỨC MỚI (ĐÃ FIX HEX CHO RAL & PANTONE)
+  // 4. FORM 3: CẬP NHẬT CÔNG THỨC (ĐÃ FIX HEX PANTONE)
   // ---------------------------------------------------------------------------
   const [optionForm3, setOptionForm3] = useState('RAL COLOR');
   const [customerNameForm3, setCustomerNameForm3] = useState('');
@@ -186,9 +190,7 @@ function App() {
       return;
     }
 
-    // Chuẩn hóa chuỗi để so sánh
     const normalizeStr = (str) => String(str || '').toLowerCase().replace(/[\s\-_]/g, '');
-
     const rawKw = findHexInput.trim();
     const cleanKw = normalizeStr(rawKw);
 
@@ -200,7 +202,6 @@ function App() {
       return;
     }
 
-    // 1. Tìm dòng tương ứng trong Cache
     let found = cache.find((item) => {
       return Object.values(item).some((val) => {
         const normalizedVal = normalizeStr(val);
@@ -217,7 +218,6 @@ function App() {
     });
 
     if (found) {
-      // 2. Lấy mã màu (CODE)
       const code =
         found.CODE ||
         found.Code ||
@@ -229,7 +229,6 @@ function App() {
         found.NAME ||
         rawKw;
 
-      // 3. Lấy giá trị HEX thô
       let rawHex =
         found.HEX ||
         found.Hex ||
@@ -241,7 +240,6 @@ function App() {
         '';
 
       if (rawHex) {
-        // Làm sạch ngoặc vuông, dấu nháy, khoảng trắng
         const cleanHex = cleanHexValue(rawHex);
 
         setColorHexResultForm3(`${prefix}-${code.toString().trim()},${cleanHex}`);
@@ -264,7 +262,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // RENDER GIAO DIỆN
+  // GIAO DIỆN HỆ THỐNG
   // ---------------------------------------------------------------------------
   return (
     <div style={styles.pageBackground}>
@@ -345,7 +343,7 @@ function App() {
               <input
                 type="text"
                 style={styles.textInput}
-                placeholder="Ví dụ: 1003, 7035, 285C..."
+                placeholder="Ví dụ: 1003, 7035, 285..."
                 value={colorCode}
                 onChange={(e) => setColorCode(e.target.value)}
               />
@@ -460,7 +458,7 @@ function App() {
               <input
                 type="text"
                 style={styles.textInput}
-                placeholder="Ví dụ: RAL-7035,#D7D7D7"
+                placeholder="Ví dụ: PANTONE-285,#F3ECE0"
                 value={colorHexResultForm3}
                 onChange={(e) => setColorHexResultForm3(e.target.value)}
               />
