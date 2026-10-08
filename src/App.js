@@ -14,7 +14,6 @@ function App() {
   const [pantoneFormulas, setPantoneFormulas] = useState([]);
   const [customerFormulas, setCustomerFormulas] = useState([]);
 
-  // Load dữ liệu CSV từ thư mục public/
   useEffect(() => {
     const loadCsv = (filePath) => {
       return new Promise((resolve) => {
@@ -99,7 +98,7 @@ function App() {
       targetCache = [...ralHexCache, ...pantoneHexCache];
     }
 
-    // 1. Tìm Hex Color để tô màu xem trước
+    // 1. Tìm Hex Color
     const foundHexItem = targetCache.find((item) =>
       Object.values(item).some((v) => String(v).toLowerCase().includes(cleanCode))
     );
@@ -187,7 +186,7 @@ function App() {
       const cleanHex = hex.startsWith('#') ? hex : `#${hex}`;
       
       setColorHexResultForm3(`${prefix}-${code},${cleanHex}`);
-      setPreviewHexForm3(cleanHex); // Cập nhật màu xem trước khi tìm thấy HEX
+      setPreviewHexForm3(cleanHex);
     } else {
       alert(`Không tìm thấy mã HEX trong bộ nhớ Cache!`);
       setPreviewHexForm3('#FFFFFF');
@@ -212,9 +211,10 @@ function App() {
         {/* FORM 1: ĐĂNG NHẬP */}
         {currentForm === 'form1' && (
           <div style={styles.formContainer}>
-            <h3 style={{ textAlign: 'center', marginBottom: '25px', color: '#0f3c4c', fontSize: '20px' }}>
-              ĐĂNG NHẬP HỆ THỐNG
-            </h3>
+            <div style={styles.headerBlock}>
+              <img src="/logo-buxda.png" alt="Logo BUXDA" style={styles.logoImgMain} />
+              <h3 style={styles.formTitleMain}>ĐĂNG NHẬP HỆ THỐNG</h3>
+            </div>
             <form onSubmit={handleLogin}>
               <div style={styles.fieldGroup}>
                 <label style={styles.label}>TÊN ĐĂNG NHẬP:</label>
@@ -248,9 +248,8 @@ function App() {
         {/* FORM 2: TRA CỨU */}
         {currentForm === 'form2' && (
           <div style={styles.formContainer}>
-            {/* Header với Logo bên trái */}
-            <div style={styles.headerRow}>
-              <img src="/logo-buxda.png" alt="Logo BUXDA" style={styles.logoImg} />
+            <div style={styles.headerBlock}>
+              <img src="/logo-buxda.png" alt="Logo BUXDA" style={styles.logoImgHeader} />
               <h2 style={styles.formTitleHeader}>TRA CỨU CÔNG THỨC MÀU</h2>
             </div>
 
@@ -301,32 +300,26 @@ function App() {
               />
             </div>
 
-            {/* MÀU XEM TRƯỚC (Tăng kích thước lên 3 lần) */}
             <div style={styles.fieldGroup}>
               <label style={styles.label}>MÀU XEM TRƯỚC:</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              <div style={styles.previewColorRow}>
                 <div
                   style={{
-                    width: '180px',       // Gấp 3 lần (ban đầu 60px)
-                    height: '120px',      // Gấp 3 lần (ban đầu 40px)
-                    borderRadius: '8px',
-                    border: '2px solid #bbb',
+                    ...styles.previewColorBox,
                     backgroundColor: displayHex,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                   }}
                 />
-                <div>
-                  <div style={{ fontSize: '13px', color: '#666' }}>Mã màu HEX:</div>
-                  <strong style={{ fontSize: '18px', color: '#1a202c' }}>{displayHex}</strong>
+                <div style={styles.previewTextGroup}>
+                  <div style={{ fontSize: '12px', color: '#666' }}>Mã màu HEX:</div>
+                  <strong style={{ fontSize: '20px', color: '#1a202c' }}>{displayHex}</strong>
                 </div>
               </div>
             </div>
 
-            {/* CÔNG THỨC PHA MÀU (Chiều cao tăng 1.5 lần, rows=8) */}
             <div style={styles.fieldGroup}>
               <label style={styles.label}>CÔNG THỨC PHA MÀU:</label>
               <textarea
-                rows={8}
+                rows={7}
                 readOnly
                 style={{ ...styles.textAreaInput, backgroundColor: '#f8f9fa' }}
                 value={searchResultFormula}
@@ -354,9 +347,8 @@ function App() {
         {/* FORM 3: CẬP NHẬT CÔNG THỨC */}
         {currentForm === 'form3' && (
           <div style={styles.formContainer}>
-            {/* Header với Logo bên trái */}
-            <div style={styles.headerRow}>
-              <img src="/logo-buxda.png" alt="Logo BUXDA" style={styles.logoImg} />
+            <div style={styles.headerBlock}>
+              <img src="/logo-buxda.png" alt="Logo BUXDA" style={styles.logoImgHeader} />
               <h2 style={styles.formTitleHeader}>CẬP NHẬT CÔNG THỨC MỚI</h2>
             </div>
 
@@ -387,10 +379,10 @@ function App() {
 
             <div style={styles.fieldGroup}>
               <label style={styles.label}>TÌM MÃ HEX:</label>
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
-                  style={styles.textInput}
+                  style={{ ...styles.textInput, flex: 1 }}
                   placeholder="Gõ mã màu để tìm..."
                   value={findHexInput}
                   onChange={(e) => setFindHexInput(e.target.value)}
@@ -412,26 +404,23 @@ function App() {
               />
             </div>
 
-            {/* Ô xem trước màu sắc trong Form 3 khi tìm thấy mã HEX */}
+            {/* Màu xem trước Form 3 tối ưu chuẩn Mobile */}
             <div style={styles.fieldGroup}>
               <label style={styles.label}>MÀU XEM TRƯỚC HỆ THỐNG TÌM THẤY:</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <div style={styles.previewColorRow}>
                 <div
                   style={{
-                    width: '80px',
-                    height: '45px',
-                    borderRadius: '6px',
-                    border: '2px solid #ccc',
+                    ...styles.previewColorBoxSmall,
                     backgroundColor: previewHexForm3,
                   }}
                 />
-                <span style={{ fontSize: '14px', color: '#4a5568' }}>
-                  Mã xem trước: <strong>{previewHexForm3}</strong>
-                </span>
+                <div style={styles.previewTextGroup}>
+                  <div style={{ fontSize: '12px', color: '#666' }}>Mã xem trước:</div>
+                  <strong style={{ fontSize: '18px', color: '#1a202c' }}>{previewHexForm3}</strong>
+                </div>
               </div>
             </div>
 
-            {/* Ô nhập công thức (Bỏ chữ Mã Gốc,Gram) */}
             <div style={styles.fieldGroup}>
               <label style={styles.label}>NHẬP CÔNG THỨC:</label>
               <textarea
@@ -465,7 +454,7 @@ function App() {
   );
 }
 
-// STYLES INLINE CẬP NHẬT
+// STYLES INLINE - TỐI ƯU CÂN BẰNG CHO CẢ DI ĐỘNG & MÁY TÍNH
 const styles = {
   pageBackground: {
     backgroundColor: '#eef2f5',
@@ -473,42 +462,59 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: '20px',
+    padding: '10px',
+    boxSizing: 'border-box',
     fontFamily: "'Segoe UI', Roboto, sans-serif",
   },
   windowCard: {
     backgroundColor: '#ffffff',
     width: '100%',
-    maxWidth: '650px',
+    maxWidth: '520px',
     borderRadius: '12px',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
     overflow: 'hidden',
     border: '1px solid #dcdfe6',
   },
-  headerRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '15px',
-    marginBottom: '20px',
+  formContainer: { 
+    padding: '20px 18px',
   },
-  logoImg: {
-    height: '45px',
+  headerBlock: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '20px',
+    gap: '8px',
+  },
+  logoImgMain: {
+    height: '50px',
     objectFit: 'contain',
   },
-  formTitleHeader: {
-    color: '#1a202c',
+  logoImgHeader: {
+    height: '42px',
+    objectFit: 'contain',
+  },
+  formTitleMain: {
+    color: '#0f3c4c',
     fontSize: '18px',
     fontWeight: 'bold',
     margin: 0,
+    textAlign: 'center',
   },
-  formContainer: { padding: '30px' },
-  fieldGroup: { marginBottom: '15px' },
+  formTitleHeader: {
+    color: '#1a202c',
+    fontSize: '16px',
+    fontWeight: 'bold',
+    margin: 0,
+    textAlign: 'center',
+  },
+  fieldGroup: { marginBottom: '14px' },
   label: {
     display: 'block',
     fontSize: '12px',
     fontWeight: 'bold',
     color: '#4a5568',
-    marginBottom: '6px',
+    marginBottom: '5px',
   },
   selectInput: {
     width: '100%',
@@ -516,6 +522,8 @@ const styles = {
     borderRadius: '6px',
     border: '1px solid #cbd5e0',
     backgroundColor: '#fff',
+    fontSize: '14px',
+    boxSizing: 'border-box',
   },
   textInput: {
     width: '100%',
@@ -523,6 +531,7 @@ const styles = {
     borderRadius: '6px',
     border: '1px solid #cbd5e0',
     boxSizing: 'border-box',
+    fontSize: '14px',
   },
   disabledInput: {
     width: '100%',
@@ -532,9 +541,39 @@ const styles = {
     backgroundColor: '#edf2f7',
     color: '#a0aec0',
     boxSizing: 'border-box',
+    fontSize: '14px',
+  },
+  previewColorRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '15px',
+    backgroundColor: '#f8f9fa',
+    padding: '10px',
+    borderRadius: '8px',
+    border: '1px solid #e2e8f0',
+  },
+  previewColorBox: {
+    flex: '1 1 50%',
+    height: '90px',
+    borderRadius: '6px',
+    border: '1px solid #bbb',
+    boxShadow: 'inset 0 0 4px rgba(0,0,0,0.1)',
+  },
+  previewColorBoxSmall: {
+    flex: '0 0 80px',
+    height: '50px',
+    borderRadius: '6px',
+    border: '1px solid #bbb',
+    boxShadow: 'inset 0 0 4px rgba(0,0,0,0.1)',
+  },
+  previewTextGroup: {
+    flex: '1',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
   },
   btnFind: {
-    padding: '10px 20px',
+    padding: '10px 16px',
     backgroundColor: '#28a745',
     color: '#fff',
     border: 'none',
@@ -542,6 +581,7 @@ const styles = {
     fontWeight: 'bold',
     cursor: 'pointer',
     whiteSpace: 'nowrap',
+    fontSize: '13px',
   },
   textAreaInput: {
     width: '100%',
@@ -550,6 +590,7 @@ const styles = {
     border: '1px solid #cbd5e0',
     fontFamily: 'monospace',
     boxSizing: 'border-box',
+    fontSize: '14px',
   },
   btnPrimary: {
     width: '100%',
@@ -566,15 +607,16 @@ const styles = {
   actionButtonsRow: {
     display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '10px',
-    marginTop: '20px',
+    gap: '8px',
+    marginTop: '18px',
   },
   actionBtn: {
-    padding: '12px 5px',
+    padding: '11px 2px',
     border: 'none',
     borderRadius: '6px',
     color: '#fff',
     fontWeight: 'bold',
+    fontSize: '12px',
     cursor: 'pointer',
     textAlign: 'center',
   },
