@@ -103,8 +103,16 @@ function App() {
       Object.values(item).some((v) => String(v).toLowerCase().includes(cleanCode))
     );
     if (foundHexItem) {
-      const hex = foundHexItem.HEX || foundHexItem.Hex || foundHexItem.hex || '#FFFFFF';
-      setDisplayHex(hex.startsWith('#') ? hex : `#${hex}`);
+      const hex =
+        foundHexItem.HEX ||
+        foundHexItem.Hex ||
+        foundHexItem.HEX_CODE ||
+        foundHexItem.hex ||
+        Object.values(foundHexItem).find((val) => typeof val === 'string' && val.trim().startsWith('#')) ||
+        '#FFFFFF';
+
+      const cleanHex = hex.trim().startsWith('#') ? hex.trim() : `#${hex.trim()}`;
+      setDisplayHex(cleanHex);
     } else {
       setDisplayHex('#CCCCCC');
     }
@@ -148,7 +156,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 4. FORM 3: CẬP NHẬT CÔNG THỨC MỚI
+  // 4. FORM 3: CẬP NHẬT CÔNG THỨC MỚI (ĐÃ FIX TÌM MÃ HEX)
   // ---------------------------------------------------------------------------
   const [optionForm3, setOptionForm3] = useState('RAL COLOR');
   const [customerNameForm3, setCustomerNameForm3] = useState('');
@@ -176,19 +184,42 @@ function App() {
     let cache = optionForm3 === 'PANTONE COLOR' ? pantoneHexCache : ralHexCache;
     let prefix = optionForm3 === 'PANTONE COLOR' ? 'PANTONE' : 'RAL';
 
+    if (!cache || cache.length === 0) {
+      alert('Dữ liệu HEX Cache chưa được tải thành công!');
+      return;
+    }
+
     const found = cache.find((item) =>
-      Object.values(item).some((v) => String(v).toLowerCase().includes(kw))
+      Object.values(item).some((v) => String(v).trim().toLowerCase() === kw || String(v).trim().toLowerCase().includes(kw))
     );
 
     if (found) {
-      const code = found.CODE || found.Code || findHexInput;
-      const hex = found.HEX || found.Hex || '#000000';
-      const cleanHex = hex.startsWith('#') ? hex : `#${hex}`;
-      
-      setColorHexResultForm3(`${prefix}-${code},${cleanHex}`);
-      setPreviewHexForm3(cleanHex);
+      const code =
+        found.CODE ||
+        found.Code ||
+        found.COLOR_CODE ||
+        found.RAL_CODE ||
+        found.PANTONE_CODE ||
+        found.code ||
+        findHexInput.trim();
+
+      let rawHex =
+        found.HEX ||
+        found.Hex ||
+        found.HEX_CODE ||
+        found.hex ||
+        Object.values(found).find((val) => typeof val === 'string' && val.trim().startsWith('#')) ||
+        '';
+
+      if (rawHex) {
+        const cleanHex = rawHex.trim().startsWith('#') ? rawHex.trim() : `#${rawHex.trim()}`;
+        setColorHexResultForm3(`${prefix}-${code},${cleanHex}`);
+        setPreviewHexForm3(cleanHex);
+      } else {
+        alert('Tìm thấy mã màu nhưng không có giá trị HEX tương ứng!');
+      }
     } else {
-      alert(`Không tìm thấy mã HEX trong bộ nhớ Cache!`);
+      alert(`Không tìm thấy mã HEX cho từ khóa "${findHexInput}" trong bộ nhớ Cache!`);
       setPreviewHexForm3('#FFFFFF');
     }
   };
@@ -404,7 +435,6 @@ function App() {
               />
             </div>
 
-            {/* Màu xem trước Form 3 tối ưu chuẩn Mobile */}
             <div style={styles.fieldGroup}>
               <label style={styles.label}>MÀU XEM TRƯỚC HỆ THỐNG TÌM THẤY:</label>
               <div style={styles.previewColorRow}>
@@ -454,7 +484,7 @@ function App() {
   );
 }
 
-// STYLES INLINE - TỐI ƯU CÂN BẰNG CHO CẢ DI ĐỘNG & MÁY TÍNH
+// STYLES INLINE
 const styles = {
   pageBackground: {
     backgroundColor: '#eef2f5',
