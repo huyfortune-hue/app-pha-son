@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 
 function App() {
-  // Trạng thái Form hiện tại: 'form1' (Login), 'form2' (Tra cứu), 'form3' (Cập nhật)
+  // Trạng thái Form hiện tại: 'form1' (Đăng nhập), 'form2' (Tra cứu), 'form3' (Cập nhật)
   const [currentForm, setCurrentForm] = useState('form1');
 
   // ---------------------------------------------------------------------------
-  // 1. DATA CACHE & DATA FILES (Đã cập nhật đúng tên file trên GitHub)
+  // 1. DATA CACHE & DATA FILES
   // ---------------------------------------------------------------------------
   const [ralHexCache, setRalHexCache] = useState([]);
   const [pantoneHexCache, setPantoneHexCache] = useState([]);
@@ -29,8 +29,8 @@ function App() {
     };
 
     Promise.all([
-      loadCsv('/RAL_HEX_CACHE_2.csv'),       // Cập nhật đúng tên file RAL HEX
-      loadCsv('/PANTONE_HEX_CACHE_4.csv'),   // Cập nhật đúng tên file PANTONE HEX
+      loadCsv('/RAL_HEX_CACHE_2.csv'),
+      loadCsv('/PANTONE_HEX_CACHE_4.csv'),
       loadCsv('/RAL_COLOR.csv'),
       loadCsv('/PANTONE_COLOR.csv'),
       loadCsv('/CUSTOMER_DATA.csv'),
@@ -54,7 +54,7 @@ function App() {
     if (username === 'admin' && password === '123456') {
       setCurrentForm('form2');
     } else {
-      alert('Tài khoản hoặc mật khẩu không chính xác!');
+      alert('Tên đăng nhập hoặc mật khẩu không chính xác!');
     }
   };
 
@@ -80,7 +80,7 @@ function App() {
 
   const handleSearchForm2 = () => {
     if (!colorCode.trim()) {
-      alert('Vui lòng nhập mã màu (COLOR CODE)!');
+      alert('Vui lòng nhập mã màu!');
       return;
     }
 
@@ -99,7 +99,7 @@ function App() {
       targetCache = [...ralHexCache, ...pantoneHexCache];
     }
 
-    // 1. Tìm Hex Color để tô màu từ file cache tương ứng
+    // 1. Tìm Hex Color để tô màu xem trước
     const foundHexItem = targetCache.find((item) =>
       Object.values(item).some((v) => String(v).toLowerCase().includes(cleanCode))
     );
@@ -113,7 +113,7 @@ function App() {
     // 2. Tìm Công thức
     const foundFormulaItem = targetList.find((item) => {
       const matchCode = Object.values(item).some((v) => String(v).toLowerCase().includes(cleanCode));
-      if (colorSystem === 'CUSTOMER' && customerNameForm2.trim()) {
+      if (colorSystem === 'KHÁCH HÀNG' && customerNameForm2.trim()) {
         const matchName = String(item.CUSTOMER_NAME || '').toLowerCase().includes(customerNameForm2.trim().toLowerCase());
         return matchCode && matchName;
       }
@@ -156,6 +156,7 @@ function App() {
   const [colorHexResultForm3, setColorHexResultForm3] = useState('');
   const [findHexInput, setFindHexInput] = useState('');
   const [formulaInputForm3, setFormulaInputForm3] = useState('');
+  const [previewHexForm3, setPreviewHexForm3] = useState('#FFFFFF');
 
   const handleResetForm3 = () => {
     setOptionForm3('RAL COLOR');
@@ -163,10 +164,14 @@ function App() {
     setColorHexResultForm3('');
     setFindHexInput('');
     setFormulaInputForm3('');
+    setPreviewHexForm3('#FFFFFF');
   };
 
   const handleFindHexForm3 = () => {
-    if (!findHexInput.trim()) return;
+    if (!findHexInput.trim()) {
+      alert('Vui lòng nhập từ khóa tìm kiếm mã HEX!');
+      return;
+    }
     const kw = findHexInput.trim().toLowerCase();
     
     let cache = optionForm3 === 'PANTONE COLOR' ? pantoneHexCache : ralHexCache;
@@ -180,9 +185,12 @@ function App() {
       const code = found.CODE || found.Code || findHexInput;
       const hex = found.HEX || found.Hex || '#000000';
       const cleanHex = hex.startsWith('#') ? hex : `#${hex}`;
+      
       setColorHexResultForm3(`${prefix}-${code},${cleanHex}`);
+      setPreviewHexForm3(cleanHex); // Cập nhật màu xem trước khi tìm thấy HEX
     } else {
       alert(`Không tìm thấy mã HEX trong bộ nhớ Cache!`);
+      setPreviewHexForm3('#FFFFFF');
     }
   };
 
@@ -204,11 +212,12 @@ function App() {
         {/* FORM 1: ĐĂNG NHẬP */}
         {currentForm === 'form1' && (
           <div style={styles.formContainer}>
-            <div style={styles.brandTitle}>BUXDA COLOR SYSTEM</div>
-            <h3 style={{ textAlign: 'center', marginBottom: '20px' }}>ĐĂNG NHẬP HỆ THỐNG</h3>
+            <h3 style={{ textAlign: 'center', marginBottom: '25px', color: '#0f3c4c', fontSize: '20px' }}>
+              ĐĂNG NHẬP HỆ THỐNG
+            </h3>
             <form onSubmit={handleLogin}>
               <div style={styles.fieldGroup}>
-                <label style={styles.label}>TÀI KHOẢN (USER):</label>
+                <label style={styles.label}>TÊN ĐĂNG NHẬP:</label>
                 <input
                   type="text"
                   style={styles.textInput}
@@ -219,7 +228,7 @@ function App() {
                 />
               </div>
               <div style={styles.fieldGroup}>
-                <label style={styles.label}>MẬT KHẨU (PASSWORD):</label>
+                <label style={styles.label}>MẬT KHẨU:</label>
                 <input
                   type="password"
                   style={styles.textInput}
@@ -230,7 +239,7 @@ function App() {
                 />
               </div>
               <button type="submit" style={styles.btnPrimary}>
-                LOGIN (ĐĂNG NHẬP)
+                ĐĂNG NHẬP
               </button>
             </form>
           </div>
@@ -239,75 +248,85 @@ function App() {
         {/* FORM 2: TRA CỨU */}
         {currentForm === 'form2' && (
           <div style={styles.formContainer}>
-            <h2 style={styles.formTitle}>TRA CỨU CÔNG THỨC MÀU (FORM 2)</h2>
+            {/* Header với Logo bên trái */}
+            <div style={styles.headerRow}>
+              <img src="/logo-buxda.png" alt="Logo BUXDA" style={styles.logoImg} />
+              <h2 style={styles.formTitleHeader}>TRA CỨU CÔNG THỨC MÀU</h2>
+            </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>COLOR SYSTEM:</label>
+              <label style={styles.label}>HỆ THỐNG MÀU:</label>
               <select
                 style={styles.selectInput}
                 value={colorSystem}
                 onChange={(e) => setColorSystem(e.target.value)}
               >
-                <option value="RAL COLOR">RAL COLOR</option>
-                <option value="PANTONE COLOR">PANTONE COLOR</option>
-                <option value="CUSTOMER">CUSTOMER</option>
+                <option value="RAL COLOR">MÀU RAL</option>
+                <option value="PANTONE COLOR">MÀU PANTONE</option>
+                <option value="KHÁCH HÀNG">MÀU KHÁCH HÀNG</option>
               </select>
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>ENTER NAME (KHÁCH HÀNG):</label>
+              <label style={styles.label}>TÊN KHÁCH HÀNG:</label>
               <input
                 type="text"
-                style={colorSystem === 'CUSTOMER' ? styles.textInput : styles.disabledInput}
-                disabled={colorSystem !== 'CUSTOMER'}
+                style={colorSystem === 'KHÁCH HÀNG' ? styles.textInput : styles.disabledInput}
+                disabled={colorSystem !== 'KHÁCH HÀNG'}
                 value={customerNameForm2}
                 onChange={(e) => setCustomerNameForm2(e.target.value)}
-                placeholder={colorSystem === 'CUSTOMER' ? 'Nhập tên khách hàng...' : 'Mặc định ẩn'}
+                placeholder={colorSystem === 'KHÁCH HÀNG' ? 'Nhập tên khách hàng...' : 'Mặc định ẩn'}
               />
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>COLOR CODE:</label>
+              <label style={styles.label}>MÃ MÀU:</label>
               <input
                 type="text"
                 style={styles.textInput}
-                placeholder="VD: 1003, 7035, 285C..."
+                placeholder="Ví dụ: 1003, 7035, 285C..."
                 value={colorCode}
                 onChange={(e) => setColorCode(e.target.value)}
               />
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>VOLUME/GRAM:</label>
+              <label style={styles.label}>KÍCH THƯỚC / TRỌNG LƯỢNG (GAM):</label>
               <input
                 type="number"
                 style={styles.textInput}
-                placeholder="VD: 100, 500, 1000..."
+                placeholder="Ví dụ: 100, 500, 1000..."
                 value={volumeGram}
                 onChange={(e) => setVolumeGram(e.target.value)}
               />
             </div>
 
+            {/* MÀU XEM TRƯỚC (Tăng kích thước lên 3 lần) */}
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>MÀU XEM TRƯỚC (HEX PREVIEW):</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <label style={styles.label}>MÀU XEM TRƯỚC:</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                 <div
                   style={{
-                    width: '60px',
-                    height: '40px',
-                    borderRadius: '6px',
-                    border: '2px solid #ccc',
+                    width: '180px',       // Gấp 3 lần (ban đầu 60px)
+                    height: '120px',      // Gấp 3 lần (ban đầu 40px)
+                    borderRadius: '8px',
+                    border: '2px solid #bbb',
                     backgroundColor: displayHex,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                   }}
                 />
-                <span>Mã Hex: <strong>{displayHex}</strong></span>
+                <div>
+                  <div style={{ fontSize: '13px', color: '#666' }}>Mã màu HEX:</div>
+                  <strong style={{ fontSize: '18px', color: '#1a202c' }}>{displayHex}</strong>
+                </div>
               </div>
             </div>
 
+            {/* CÔNG THỨC PHA MÀU (Chiều cao tăng 1.5 lần, rows=8) */}
             <div style={styles.fieldGroup}>
               <label style={styles.label}>CÔNG THỨC PHA MÀU:</label>
               <textarea
-                rows={5}
+                rows={8}
                 readOnly
                 style={{ ...styles.textAreaInput, backgroundColor: '#f8f9fa' }}
                 value={searchResultFormula}
@@ -317,16 +336,16 @@ function App() {
 
             <div style={styles.actionButtonsRow}>
               <button style={{ ...styles.actionBtn, backgroundColor: '#28a745' }} onClick={handleSearchForm2}>
-                SEARCH
+                TÌM KIẾM
               </button>
               <button style={{ ...styles.actionBtn, backgroundColor: '#e5a500' }} onClick={handleResetForm2}>
-                RESET
+                LÀM MỚI
               </button>
               <button style={{ ...styles.actionBtn, backgroundColor: '#dc3545' }} onClick={() => setCurrentForm('form1')}>
-                EXIT
+                THOÁT
               </button>
               <button style={{ ...styles.actionBtn, backgroundColor: '#0f3c4c' }} onClick={() => setCurrentForm('form3')}>
-                UPDATE
+                CẬP NHẬT
               </button>
             </div>
           </div>
@@ -335,66 +354,90 @@ function App() {
         {/* FORM 3: CẬP NHẬT CÔNG THỨC */}
         {currentForm === 'form3' && (
           <div style={styles.formContainer}>
-            <h2 style={styles.formTitle}>CẬP NHẬT CÔNG THỨC MỚI (FORM 3)</h2>
+            {/* Header với Logo bên trái */}
+            <div style={styles.headerRow}>
+              <img src="/logo-buxda.png" alt="Logo BUXDA" style={styles.logoImg} />
+              <h2 style={styles.formTitleHeader}>CẬP NHẬT CÔNG THỨC MỚI</h2>
+            </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>OPTION:</label>
+              <label style={styles.label}>LOẠI HỆ THỐNG:</label>
               <select
                 style={styles.selectInput}
                 value={optionForm3}
                 onChange={(e) => setOptionForm3(e.target.value)}
               >
-                <option value="RAL COLOR">RAL COLOR</option>
-                <option value="PANTONE COLOR">PANTONE COLOR</option>
-                <option value="CUSTOMER">CUSTOMER</option>
+                <option value="RAL COLOR">MÀU RAL</option>
+                <option value="PANTONE COLOR">MÀU PANTONE</option>
+                <option value="KHÁCH HÀNG">MÀU KHÁCH HÀNG</option>
               </select>
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>ENTER NAME (KHÁCH HÀNG):</label>
+              <label style={styles.label}>TÊN KHÁCH HÀNG:</label>
               <input
                 type="text"
-                style={optionForm3 === 'CUSTOMER' ? styles.textInput : styles.disabledInput}
-                disabled={optionForm3 !== 'CUSTOMER'}
+                style={optionForm3 === 'KHÁCH HÀNG' ? styles.textInput : styles.disabledInput}
+                disabled={optionForm3 !== 'KHÁCH HÀNG'}
                 value={customerNameForm3}
                 onChange={(e) => setCustomerNameForm3(e.target.value)}
-                placeholder={optionForm3 === 'CUSTOMER' ? 'Nhập tên khách hàng...' : 'Mặc định ẩn'}
+                placeholder={optionForm3 === 'KHÁCH HÀNG' ? 'Nhập tên khách hàng...' : 'Mặc định ẩn'}
               />
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>FIND HEX CODE:</label>
+              <label style={styles.label}>TÌM MÃ HEX:</label>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <input
                   type="text"
                   style={styles.textInput}
-                  placeholder="Gõ R1003 hoặc P285C..."
+                  placeholder="Gõ mã màu để tìm..."
                   value={findHexInput}
                   onChange={(e) => setFindHexInput(e.target.value)}
                 />
                 <button style={styles.btnFind} onClick={handleFindHexForm3}>
-                  FIND
+                  TÌM MÃ
                 </button>
               </div>
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>COLOR/HEX:</label>
+              <label style={styles.label}>MÀU / MÃ HEX:</label>
               <input
                 type="text"
                 style={styles.textInput}
-                placeholder="VD: RAL-7035,#D7D7D7 hoặc Màu đen mờ..."
+                placeholder="Ví dụ: RAL-7035,#D7D7D7"
                 value={colorHexResultForm3}
                 onChange={(e) => setColorHexResultForm3(e.target.value)}
               />
             </div>
 
+            {/* Ô xem trước màu sắc trong Form 3 khi tìm thấy mã HEX */}
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>NHẬP CÔNG THỨC (MãGốc,Gram):</label>
+              <label style={styles.label}>MÀU XEM TRƯỚC HỆ THỐNG TÌM THẤY:</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div
+                  style={{
+                    width: '80px',
+                    height: '45px',
+                    borderRadius: '6px',
+                    border: '2px solid #ccc',
+                    backgroundColor: previewHexForm3,
+                  }}
+                />
+                <span style={{ fontSize: '14px', color: '#4a5568' }}>
+                  Mã xem trước: <strong>{previewHexForm3}</strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Ô nhập công thức (Bỏ chữ Mã Gốc,Gram) */}
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>NHẬP CÔNG THỨC:</label>
               <textarea
                 rows={5}
                 style={styles.textAreaInput}
-                placeholder={"MC-4400,250\nMC-4200,15\nMC-3000,2.7"}
+                placeholder={"Ví dụ:\nMC-4400, 250\nMC-4200, 15\nMC-3000, 2.7"}
                 value={formulaInputForm3}
                 onChange={(e) => setFormulaInputForm3(e.target.value)}
               />
@@ -402,16 +445,16 @@ function App() {
 
             <div style={styles.actionButtonsRow}>
               <button style={{ ...styles.actionBtn, backgroundColor: '#28a745' }} onClick={handleSaveForm3}>
-                SAVE
+                LƯU
               </button>
               <button style={{ ...styles.actionBtn, backgroundColor: '#2b6cb0' }} onClick={() => setCurrentForm('form2')}>
-                BACK
+                QUAY LẠI
               </button>
               <button style={{ ...styles.actionBtn, backgroundColor: '#e5a500' }} onClick={handleResetForm3}>
-                RESET
+                LÀM MỚI
               </button>
               <button style={{ ...styles.actionBtn, backgroundColor: '#dc3545' }} onClick={() => setCurrentForm('form1')}>
-                EXIT
+                THOÁT
               </button>
             </div>
           </div>
@@ -422,7 +465,7 @@ function App() {
   );
 }
 
-// STYLES INLINE
+// STYLES INLINE CẬP NHẬT
 const styles = {
   pageBackground: {
     backgroundColor: '#eef2f5',
@@ -442,28 +485,30 @@ const styles = {
     overflow: 'hidden',
     border: '1px solid #dcdfe6',
   },
-  brandTitle: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: '#0f3c4c',
-    marginBottom: '10px',
+  headerRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '15px',
+    marginBottom: '20px',
   },
-  formContainer: { padding: '30px' },
-  formTitle: {
-    textAlign: 'center',
+  logoImg: {
+    height: '45px',
+    objectFit: 'contain',
+  },
+  formTitleHeader: {
     color: '#1a202c',
     fontSize: '18px',
     fontWeight: 'bold',
-    marginBottom: '20px',
+    margin: 0,
   },
+  formContainer: { padding: '30px' },
   fieldGroup: { marginBottom: '15px' },
   label: {
     display: 'block',
     fontSize: '12px',
     fontWeight: 'bold',
     color: '#4a5568',
-    marginBottom: '5px',
+    marginBottom: '6px',
   },
   selectInput: {
     width: '100%',
@@ -496,6 +541,7 @@ const styles = {
     borderRadius: '6px',
     fontWeight: 'bold',
     cursor: 'pointer',
+    whiteSpace: 'nowrap',
   },
   textAreaInput: {
     width: '100%',
