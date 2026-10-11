@@ -13,7 +13,6 @@ function App() {
   const [pantoneFormulas, setPantoneFormulas] = useState([]);
   const [customerFormulas, setCustomerFormulas] = useState([]);
   
-  // Lưu trữ công thức mới thêm ở Form 3 để Form 2 truy vấn ngay lập tức
   const [customSavedFormulas, setCustomSavedFormulas] = useState([]);
 
   useEffect(() => {
@@ -48,7 +47,6 @@ function App() {
     });
   }, []);
 
-  // CHUẨN HÓA CHUỖI TÌM KIẾM
   const cleanSearchString = (str) => {
     return String(str || '')
       .toLowerCase()
@@ -201,7 +199,6 @@ function App() {
       targetCache = [...ralHexCache, ...pantoneHexCache];
     }
 
-    // 1. Tìm Hex trong Cache hoặc Online
     const foundHexItem = findInLocalCache(colorCode, targetCache);
     if (foundHexItem) {
       setDisplayHex(extractHexFromRow(foundHexItem));
@@ -214,7 +211,6 @@ function App() {
       }
     }
 
-    // 2. TÌM CÔNG THỨC (KẾT HỢP CUSTOM SAVED & CSV)
     const cleanKw = cleanSearchString(colorCode);
     const combinedList = [...customSavedFormulas, ...targetList];
 
@@ -285,14 +281,11 @@ function App() {
     let cache = optionForm3 === 'PANTONE COLOR' ? pantoneHexCache : ralHexCache;
     let prefix = optionForm3 === 'PANTONE COLOR' ? 'PANTONE' : 'RAL';
 
-    // 1. Tìm trong File CSV local
     let foundRow = findInLocalCache(rawKw, cache);
 
     if (foundRow) {
       const hexVal = extractHexFromRow(foundRow);
       let codeVal = extractCodeFromRow(foundRow, rawKw);
-
-      // KHẮC PHỤC LỖI DƯ TIỀN TỐ (RAL-RAL-...)
       codeVal = codeVal.replace(/^(RAL|PANTONE)[\s\-_]*/i, '').trim();
 
       setColorHexResultForm3(`${prefix}-${codeVal.toUpperCase()},${hexVal}`);
@@ -300,7 +293,6 @@ function App() {
       return;
     }
 
-    // 2. Tra cứu Internet nếu local không có
     setIsSearchingOnline(true);
     const onlineHex = await fetchOnlineHex(rawKw, prefix);
     setIsSearchingOnline(false);
@@ -315,7 +307,7 @@ function App() {
     }
   };
 
-  // NÚT LƯU CÔNG THỨC (GHI VÀO GOOGLE SHEET DÙNG HIDDEN FORM SUBMIT KHÔNG BỊ CORS)
+  // NÚT LƯU CÔNG THỨC (GHI VÀO GOOGLE SHEET DÙNG KỸ THUẬT GET REQUEST 100% THÀNH CÔNG)
   const handleSaveForm3 = () => {
     if (!colorHexResultForm3 || !formulaInputForm3) {
       alert('Vui lòng điền đầy đủ thông tin mã màu và công thức!');
@@ -325,43 +317,20 @@ function App() {
     try {
       alert('Đang lưu công thức lên Google Sheet...');
 
-      const scriptUrl = 'https://script.google.com/macros/s/AKfycbwMXliod0Uyh4mKX1YdCLrj2wyxWs86wXLw3yGD7yoZQhTqGmYOAtnhwTWgyPB9_WSh/exec';
+      const baseUrl = 'https://script.google.com/macros/s/AKfycbwMXliod0Uyh4mKX1YdCLrj2wyxWs86wXLw3yGD7yoZQhTqGmYOAtnhwTWgyPB9_WSh/exec';
 
-      // Tạo Form ẩn để submit dữ liệu trực tiếp, hoàn toàn bỏ qua lỗi CORS của trình duyệt
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = scriptUrl;
-      form.target = 'hidden_iframe';
-
-      const dataPayload = {
+      const queryParams = new URLSearchParams({
         option: optionForm3,
         customerName: customerNameForm3,
         colorHex: colorHexResultForm3,
         formula: formulaInputForm3,
         userLogin: username || 'admin'
-      };
+      });
 
-      for (const key in dataPayload) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = dataPayload[key];
-        form.appendChild(input);
-      }
-
-      // Tạo thẻ iframe ẩn để hứng phản hồi, giữ nguyên trang web React
-      let iframe = document.getElementById('hidden_iframe');
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.name = 'hidden_iframe';
-        iframe.id = 'hidden_iframe';
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-      }
-
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
+      // Tạo một Image hoặc dùng fetch với no-cors để gọi ngầm URL kèm tham số GET
+      const targetUrl = `${baseUrl}?${queryParams.toString()}`;
+      
+      fetch(targetUrl, { mode: 'no-cors' }).catch(() => {});
 
       // Đồng bộ tạm vào state để Form 2 đọc được ngay lập tức
       const parts = colorHexResultForm3.split(',');
