@@ -5,13 +5,16 @@ function App() {
   const [currentForm, setCurrentForm] = useState('form1');
 
   // ---------------------------------------------------------------------------
-  // 1. DATA CACHE & DATA FILES
+  // 1. DATA CACHE & CUSTOM SAVED FORMULAS
   // ---------------------------------------------------------------------------
   const [ralHexCache, setRalHexCache] = useState([]);
   const [pantoneHexCache, setPantoneHexCache] = useState([]);
   const [ralFormulas, setRalFormulas] = useState([]);
   const [pantoneFormulas, setPantoneFormulas] = useState([]);
   const [customerFormulas, setCustomerFormulas] = useState([]);
+  
+  // Lưu trữ các công thức do người dùng thêm/cập nhật ở Form 3 để Form 2 đọc được ngay
+  const [customSavedFormulas, setCustomSavedFormulas] = useState([]);
 
   useEffect(() => {
     const loadCsv = (filePath) => {
@@ -45,24 +48,21 @@ function App() {
     });
   }, []);
 
-  // CHUẨN HÓA CHUỖI TÌM KIẾM (Bỏ dấu, khoảng trắng, ký tự đặc biệt)
+  // CHUẨN HÓA CHUỖI TÌM KIẾM
   const cleanSearchString = (str) => {
     return String(str || '')
       .toLowerCase()
       .replace(/[\[\]'"\s\-_]/g, '');
   };
 
-  // CHỈ LẤY CÁC CHỮ SỐ TRONG CHUỖI (VD: "PANTONE 227 C" -> "227")
   const extractDigits = (str) => {
     const num = String(str || '').match(/\d+/);
     return num ? num[0] : '';
   };
 
-  // LẤY MÃ HEX TỪ ROW CSV
   const extractHexFromRow = (row) => {
     if (!row) return '#FFFFFF';
     const values = Object.values(row);
-    // Tìm giá trị có chứa # hoặc chuỗi 6 ký tự HEX
     const hexVal = values.find(
       (v) => typeof v === 'string' && (v.includes('#') || /^[0-9A-Fa-f]{6}$/.test(String(v).replace(/[\[\]'"\s]/g, '')))
     );
@@ -75,7 +75,6 @@ function App() {
     return cleaned ? `#${cleaned}` : '#FFFFFF';
   };
 
-  // LẤY TÊN MÃ MÀU TỪ ROW CSV
   const extractCodeFromRow = (row, defaultKw) => {
     if (!row) return defaultKw;
     for (const key of Object.keys(row)) {
@@ -90,9 +89,6 @@ function App() {
     return firstVal ? String(firstVal).replace(/[\[\]'"\s]/g, ' ').trim() : defaultKw;
   };
 
-  // ---------------------------------------------------------------------------
-  // THUẬT TOÁN TÌM KIẾM TRONG CSV THÔNG MINH & ƯU TIÊN CAO NHẤT
-  // ---------------------------------------------------------------------------
   const findInLocalCache = (query, cacheList) => {
     if (!query || !cacheList || cacheList.length === 0) return null;
 
@@ -100,13 +96,11 @@ function App() {
     const cleanKw = cleanSearchString(rawKw);
     const digitsKw = extractDigits(rawKw);
 
-    // Bước 1: Tìm chính xác tuyệt đối (Exact Match sau khi làm sạch)
     let found = cacheList.find((row) =>
       Object.values(row).some((val) => cleanSearchString(val) === cleanKw)
     );
     if (found) return found;
 
-    // Bước 2: Tìm theo số hiệu màu Pantone (Số khớp hoàn toàn, ví dụ "227" khớp "Pantone 227 C")
     if (digitsKw) {
       found = cacheList.find((row) =>
         Object.values(row).some((val) => {
@@ -117,7 +111,6 @@ function App() {
       if (found) return found;
     }
 
-    // Bước 3: Tìm chứa chuỗi (Contains Match)
     found = cacheList.find((row) =>
       Object.values(row).some((val) => {
         const cVal = cleanSearchString(val);
@@ -127,9 +120,6 @@ function App() {
     return found || null;
   };
 
-  // ---------------------------------------------------------------------------
-  // API TÌM MÃ CHUYÊN NGÀNH TRÊN INTERNET (CHỈ DÙNG KHI FILE LOCAL KHÔNG CÓ)
-  // ---------------------------------------------------------------------------
   const fetchOnlineHex = async (query, systemType) => {
     try {
       const cleanQ = query.trim().toUpperCase();
@@ -211,13 +201,11 @@ function App() {
       targetCache = [...ralHexCache, ...pantoneHexCache];
     }
 
-    // ƯU TIÊN BƯỚC 1: Tìm trong File CSV Cache trước
+    // 1. Tìm Hex trong Cache hoặc Online
     const foundHexItem = findInLocalCache(colorCode, targetCache);
-
     if (foundHexItem) {
       setDisplayHex(extractHexFromRow(foundHexItem));
     } else {
-      // BƯỚC 2: Nếu file CSV local không có mới tìm trên Internet
       const onlineHex = await fetchOnlineHex(colorCode, colorSystem === 'PANTONE COLOR' ? 'PANTONE' : 'RAL');
       if (onlineHex) {
         setDisplayHex(onlineHex);
@@ -226,12 +214,14 @@ function App() {
       }
     }
 
-    // Tìm công thức
+    // 2. TÌM CÔNG THỨC (KẾT HỢP CUSTOM SAVED & CSV)
     const cleanKw = cleanSearchString(colorCode);
-    const foundFormulaItem = targetList.find((item) => {
+    const combinedList = [...customSavedFormulas, ...targetList];
+
+    const foundFormulaItem = combinedList.find((item) => {
       const matchCode = Object.values(item).some((v) => cleanSearchString(v).includes(cleanKw));
       if (colorSystem === 'KHÁCH HÀNG' && customerNameForm2.trim()) {
-        const matchName = String(item.CUSTOMER_NAME || '').toLowerCase().includes(customerNameForm2.trim().toLowerCase());
+        const matchName = String(item.CUSTOMER_NAME || item.customerName || '').toLowerCase().includes(customerNameForm2.trim().toLowerCase());
         return matchCode && matchName;
       }
       return matchCode;
@@ -266,7 +256,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 4. FORM 3: CẬP NHẬT CÔNG THỨC (TRA CỨU TRONG CSV TRƯỚC)
+  // 4. FORM 3: CẬP NHẬT CÔNG THỨC
   // ---------------------------------------------------------------------------
   const [optionForm3, setOptionForm3] = useState('RAL COLOR');
   const [customerNameForm3, setCustomerNameForm3] = useState('');
@@ -295,39 +285,86 @@ function App() {
     let cache = optionForm3 === 'PANTONE COLOR' ? pantoneHexCache : ralHexCache;
     let prefix = optionForm3 === 'PANTONE COLOR' ? 'PANTONE' : 'RAL';
 
-    // 1. ƯU TIÊN TUYỆT ĐỐI: Tìm trong File CSV local
-    const foundRow = findInLocalCache(rawKw, cache);
+    // 1. Tìm trong File CSV local
+    let foundRow = findInLocalCache(rawKw, cache);
 
     if (foundRow) {
       const hexVal = extractHexFromRow(foundRow);
-      const codeVal = extractCodeFromRow(foundRow, rawKw);
+      let codeVal = extractCodeFromRow(foundRow, rawKw);
+
+      // KHẮC PHỤC LỖI DƯ TIỀN TỐ
+      codeVal = codeVal.replace(/^(RAL|PANTONE)[\s\-_]*/i, '').trim();
 
       setColorHexResultForm3(`${prefix}-${codeVal.toUpperCase()},${hexVal}`);
       setPreviewHexForm3(hexVal);
       return;
     }
 
-    // 2. CHỈ KHI FILE LOCAL KHÔNG CÓ -> Mới tra cứu Internet
+    // 2. Tra cứu Internet nếu local không có
     setIsSearchingOnline(true);
     const onlineHex = await fetchOnlineHex(rawKw, prefix);
     setIsSearchingOnline(false);
 
     if (onlineHex) {
-      setColorHexResultForm3(`${prefix}-${rawKw.toUpperCase()},${onlineHex}`);
+      let cleanCode = rawKw.replace(/^(RAL|PANTONE)[\s\-_]*/i, '').trim().toUpperCase();
+      setColorHexResultForm3(`${prefix}-${cleanCode},${onlineHex}`);
       setPreviewHexForm3(onlineHex);
-      alert(`Đã tìm thấy mã HEX cho "${prefix} ${rawKw}" trực tuyến: ${onlineHex}`);
     } else {
       alert(`Không tìm thấy mã HEX cho "${rawKw}" trong file CSV local lẫn trực tuyến!`);
       setPreviewHexForm3('#FFFFFF');
     }
   };
 
-  const handleSaveForm3 = () => {
+  // NÚT LƯU CÔNG THỨC (GHI VÀO GOOGLE SHEET & ĐỒNG BỘ FORM 2)
+  const handleSaveForm3 = async () => {
     if (!colorHexResultForm3 || !formulaInputForm3) {
       alert('Vui lòng điền đầy đủ thông tin mã màu và công thức!');
       return;
     }
-    alert(`Đã ghi nhận công thức cho [${colorHexResultForm3}].`);
+
+    // Payload gửi đúng cấu trúc cột Google Sheet: Option, CustomerName, ColorHex, Formula, UserLogin
+    const payload = {
+      option: optionForm3,
+      customerName: customerNameForm3,
+      colorHex: colorHexResultForm3,
+      formula: formulaInputForm3,
+      userLogin: username || 'admin'
+    };
+
+    try {
+      alert('Đang lưu công thức lên Google Sheet...');
+
+      // THAY ĐƯỜNG DẪN WEB APP URL CỦA BẠN VÀO ĐÂY
+      await fetch('https://script.google.com/macros/s/AKfycbwjPHRE6cMFU2D-gN3jG251GLB0CCUX3pBRB-NY70Z9HjRaSinLITXGUM8Mtn/exec', {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      // Lưu tạm vào state để Form 2 đọc được ngay lập tức
+      const parts = colorHexResultForm3.split(',');
+      const fullCode = parts[0] || '';
+
+      const newFormulaRecord = {
+        SYSTEM: optionForm3,
+        CUSTOMER_NAME: customerNameForm3,
+        CODE: fullCode,
+        COLOR_CODE: fullCode,
+        FORMULA: formulaInputForm3,
+        BASE_VOLUME: '1000',
+      };
+      
+      setCustomSavedFormulas((prev) => [newFormulaRecord, ...prev]);
+
+      alert('Đã lưu thành công vào Google Sheet và hệ thống!');
+      handleResetForm3();
+    } catch (error) {
+      console.error('Lỗi lưu Google Sheet:', error);
+      alert('Có lỗi xảy ra khi lưu vào Google Sheet!');
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -512,7 +549,7 @@ function App() {
                 <input
                   type="text"
                   style={{ ...styles.textInput, flex: 1 }}
-                  placeholder="Gõ mã màu (VD: 227, 135c)..."
+                  placeholder="Gõ mã màu (VD: 7035, 227)..."
                   value={findHexInput}
                   onChange={(e) => setFindHexInput(e.target.value)}
                 />
@@ -534,7 +571,7 @@ function App() {
               <input
                 type="text"
                 style={styles.textInput}
-                placeholder="Ví dụ: PANTONE-227,#AA0061"
+                placeholder="Ví dụ: RAL-7035,#CBD0CC"
                 value={colorHexResultForm3}
                 onChange={(e) => setColorHexResultForm3(e.target.value)}
               />
