@@ -325,7 +325,7 @@ function App() {
     try {
       alert('Đang lưu công thức lên Google Sheet...');
 
-      const scriptUrl = 'https://script.google.com/macros/s/AKfycbwjPHRE6cMFU2D-gN3jG251GLB0CCUX3pBRB-NY70Z9HjRaSinLITXGUM8Mtn/exec';
+      const scriptUrl = 'https://script.google.com/macros/s/AKfycbwMXliod0Uyh4mKX1YdCLrj2wyxWs86wXLw3yGD7yoZQhTqGmYOAtnhwTWgyPB9_WSh/exec';
 
       // Tạo Form ẩn để submit dữ liệu trực tiếp, hoàn toàn bỏ qua lỗi CORS của trình duyệt
       const form = document.createElement('form');
