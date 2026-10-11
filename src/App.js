@@ -13,7 +13,7 @@ function App() {
   const [pantoneFormulas, setPantoneFormulas] = useState([]);
   const [customerFormulas, setCustomerFormulas] = useState([]);
   
-  // Lưu trữ các công thức do người dùng thêm/cập nhật ở Form 3 để Form 2 đọc được ngay
+  // Lưu trữ công thức mới thêm ở Form 3 để Form 2 truy vấn ngay lập tức
   const [customSavedFormulas, setCustomSavedFormulas] = useState([]);
 
   useEffect(() => {
@@ -292,7 +292,7 @@ function App() {
       const hexVal = extractHexFromRow(foundRow);
       let codeVal = extractCodeFromRow(foundRow, rawKw);
 
-      // KHẮC PHỤC LỖI DƯ TIỀN TỐ
+      // KHẮC PHỤC LỖI DƯ TIỀN TỐ (RAL-RAL-...)
       codeVal = codeVal.replace(/^(RAL|PANTONE)[\s\-_]*/i, '').trim();
 
       setColorHexResultForm3(`${prefix}-${codeVal.toUpperCase()},${hexVal}`);
@@ -315,14 +315,13 @@ function App() {
     }
   };
 
-  // NÚT LƯU CÔNG THỨC (GHI VÀO GOOGLE SHEET & ĐỒNG BỘ FORM 2)
+  // NÚT LƯU CÔNG THỨC (GHI VÀO GOOGLE SHEET BẰNG TEXT/PLAIN ĐỂ TRÁNH LỖI CORS)
   const handleSaveForm3 = async () => {
     if (!colorHexResultForm3 || !formulaInputForm3) {
       alert('Vui lòng điền đầy đủ thông tin mã màu và công thức!');
       return;
     }
 
-    // Payload gửi đúng cấu trúc cột Google Sheet: Option, CustomerName, ColorHex, Formula, UserLogin
     const payload = {
       option: optionForm3,
       customerName: customerNameForm3,
@@ -332,19 +331,21 @@ function App() {
     };
 
     try {
-      alert('Đang lưu công thức lên Google Sheet...');
+      alert('Đang gửi dữ liệu lên Google Sheet...');
 
-      // THAY ĐƯỜNG DẪN WEB APP URL CỦA BẠN VÀO ĐÂY
-      await fetch(https://script.google.com/macros/s/AKfycbwjPHRE6cMFU2D-gN3jG251GLB0cCUX3pBRB-NY70Z9HjRaSinLITXGUM8MtnJUrVKW/exec, {
+      const scriptUrl = 'https://script.google.com/macros/s/AKfycbwjPHRE6cMFU2D-gN3jG251GLB0CCUX3pBRB-NY70Z9HjRaSinLITXGUM8Mtn/exec';
+
+      // Sử dụng Content-Type text/plain để tránh bị trình duyệt chặn preflight CORS
+      await fetch(scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'text/plain;charset=utf-8',
         },
         body: JSON.stringify(payload),
       });
 
-      // Lưu tạm vào state để Form 2 đọc được ngay lập tức
+      // Đồng bộ vào state để Form 2 đọc được ngay mà không cần tải lại trang
       const parts = colorHexResultForm3.split(',');
       const fullCode = parts[0] || '';
 
@@ -359,7 +360,7 @@ function App() {
       
       setCustomSavedFormulas((prev) => [newFormulaRecord, ...prev]);
 
-      alert('Đã lưu thành công vào Google Sheet và hệ thống!');
+      alert('Đã lưu thành công công thức vào Google Sheet!');
       handleResetForm3();
     } catch (error) {
       console.error('Lỗi lưu Google Sheet:', error);
