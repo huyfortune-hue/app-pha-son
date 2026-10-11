@@ -315,37 +315,55 @@ function App() {
     }
   };
 
-  // NÚT LƯU CÔNG THỨC (GHI VÀO GOOGLE SHEET BẰNG TEXT/PLAIN ĐỂ TRÁNH LỖI CORS)
-  const handleSaveForm3 = async () => {
+  // NÚT LƯU CÔNG THỨC (GHI VÀO GOOGLE SHEET DÙNG HIDDEN FORM SUBMIT KHÔNG BỊ CORS)
+  const handleSaveForm3 = () => {
     if (!colorHexResultForm3 || !formulaInputForm3) {
       alert('Vui lòng điền đầy đủ thông tin mã màu và công thức!');
       return;
     }
 
-    const payload = {
-      option: optionForm3,
-      customerName: customerNameForm3,
-      colorHex: colorHexResultForm3,
-      formula: formulaInputForm3,
-      userLogin: username || 'admin'
-    };
-
     try {
-      alert('Đang gửi dữ liệu lên Google Sheet...');
+      alert('Đang lưu công thức lên Google Sheet...');
 
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbwjPHRE6cMFU2D-gN3jG251GLB0CCUX3pBRB-NY70Z9HjRaSinLITXGUM8Mtn/exec';
 
-      // Sử dụng Content-Type text/plain để tránh bị trình duyệt chặn preflight CORS
-      await fetch(scriptUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8',
-        },
-        body: JSON.stringify(payload),
-      });
+      // Tạo Form ẩn để submit dữ liệu trực tiếp, hoàn toàn bỏ qua lỗi CORS của trình duyệt
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = scriptUrl;
+      form.target = 'hidden_iframe';
 
-      // Đồng bộ vào state để Form 2 đọc được ngay mà không cần tải lại trang
+      const dataPayload = {
+        option: optionForm3,
+        customerName: customerNameForm3,
+        colorHex: colorHexResultForm3,
+        formula: formulaInputForm3,
+        userLogin: username || 'admin'
+      };
+
+      for (const key in dataPayload) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = dataPayload[key];
+        form.appendChild(input);
+      }
+
+      // Tạo thẻ iframe ẩn để hứng phản hồi, giữ nguyên trang web React
+      let iframe = document.getElementById('hidden_iframe');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.name = 'hidden_iframe';
+        iframe.id = 'hidden_iframe';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+
+      // Đồng bộ tạm vào state để Form 2 đọc được ngay lập tức
       const parts = colorHexResultForm3.split(',');
       const fullCode = parts[0] || '';
 
@@ -360,7 +378,7 @@ function App() {
       
       setCustomSavedFormulas((prev) => [newFormulaRecord, ...prev]);
 
-      alert('Đã lưu thành công công thức vào Google Sheet!');
+      alert('Đã lưu thành công vào Google Sheet!');
       handleResetForm3();
     } catch (error) {
       console.error('Lỗi lưu Google Sheet:', error);
