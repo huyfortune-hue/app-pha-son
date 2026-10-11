@@ -335,7 +335,7 @@ function App() {
       alert('Đang lưu công thức lên Google Sheet...');
 
       // THAY ĐƯỜNG DẪN WEB APP URL CỦA BẠN VÀO ĐÂY
-      await fetch('https://script.google.com/macros/s/AKfycbwjPHRE6cMFU2D-gN3jG251GLB0CCUX3pBRB-NY70Z9HjRaSinLITXGUM8Mtn/exec', {
+      await fetch(https://script.google.com/macros/s/AKfycbwjPHRE6cMFU2D-gN3jG251GLB0cCUX3pBRB-NY70Z9HjRaSinLITXGUM8MtnJUrVKW/exec, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
