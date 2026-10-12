@@ -5,7 +5,17 @@ function App() {
   const [currentForm, setCurrentForm] = useState('form1');
 
   // ---------------------------------------------------------------------------
-  // 1. DATA CACHE & CUSTOM SAVED FORMULAS
+  // 1. DANH SÁCH 21 TÀI KHOẢN ĐĂNG NHẬP (ADMIN + USER LOGIN 1 ĐẾN 20)
+  // ---------------------------------------------------------------------------
+  const accountsDatabase = {
+    admin: 'admin123@',
+    ...Object.fromEntries(
+      Array.from({ length: 20 }, (_, i) => [`User Login ${i + 1}`, `userpass${i + 1}#`])
+    )
+  };
+
+  // ---------------------------------------------------------------------------
+  // 2. DATA CACHE & CUSTOM SAVED FORMULAS
   // ---------------------------------------------------------------------------
   const [ralHexCache, setRalHexCache] = useState([]);
   const [pantoneHexCache, setPantoneHexCache] = useState([]);
@@ -145,14 +155,15 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 2. FORM 1: ĐĂNG NHẬP
+  // 3. FORM 1: ĐĂNG NHẬP (XÁC THỰC 21 TÀI KHOẢN)
   // ---------------------------------------------------------------------------
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (username === 'admin' && password === '123456') {
+    const trimmedUser = username.trim();
+    if (accountsDatabase[trimmedUser] && accountsDatabase[trimmedUser] === password) {
       setCurrentForm('form2');
     } else {
       alert('Tên đăng nhập hoặc mật khẩu không chính xác!');
@@ -160,7 +171,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 3. FORM 2: TRA CỨU MÀU
+  // 4. FORM 2: TRA CỨU MÀU
   // ---------------------------------------------------------------------------
   const [colorSystem, setColorSystem] = useState('RAL COLOR');
   const [colorCode, setColorCode] = useState('');
@@ -252,7 +263,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 4. FORM 3: CẬP NHẬT CÔNG THỨC
+  // 5. FORM 3: CẬP NHẬT CÔNG THỨC (PHÂN TÁCH CỘT RAL & PANTONE CHUẨN XÁC)
   // ---------------------------------------------------------------------------
   const [optionForm3, setOptionForm3] = useState('RAL COLOR');
   const [customerNameForm3, setCustomerNameForm3] = useState('');
@@ -307,10 +318,10 @@ function App() {
     }
   };
 
-  // NÚT LƯU CÔNG THỨC (GHI VÀO GOOGLE SHEET DÙNG KỸ THUẬT GET REQUEST 100% THÀNH CÔNG)
+  // NÚT LƯU CÔNG THỨC (GHI VÀO ĐÚNG SHEET CỦA TÀI KHOẢN ĐANG ĐĂNG NHẬP)
   const handleSaveForm3 = () => {
-    if (!colorHexResultForm3 || !formulaInputForm3) {
-      alert('Vui lòng điền đầy đủ thông tin mã màu và công thức!');
+    if (!formulaInputForm3) {
+      alert('Vui lòng nhập công thức pha màu!');
       return;
     }
 
@@ -319,35 +330,57 @@ function App() {
 
       const baseUrl = 'https://script.google.com/macros/s/AKfycbwMXliod0Uyh4mKX1YdCLrj2wyxWs86wXLw3yGD7yoZQhTqGmYOAtnhwTWgyPB9_WSh/exec';
 
+      // Phân tách dữ liệu thành đúng các cột yêu cầu:
+      // - Cột A: Customer Name
+      // - Cột B: Ral Code (nếu hệ thống là RAL)
+      // - Cột C: Pantone Code (nếu hệ thống là Pantone hoặc tùy chọn)
+      // - Cột D: Color Hex
+      // - Cột E: Formula
+      let ralCodeVal = '';
+      let pantoneCodeVal = '';
+      let hexOnly = '';
+
+      if (colorHexResultForm3.includes(',')) {
+        const parts = colorHexResultForm3.split(',');
+        const fullCode = parts[0].trim();
+        hexOnly = parts[1].trim();
+
+        if (optionForm3.toUpperCase().includes('RAL') || fullCode.startsWith('RAL')) {
+          ralCodeVal = fullCode;
+        } else if (optionForm3.toUpperCase().includes('PANTONE') || fullCode.startsWith('PANTONE')) {
+          pantoneCodeVal = fullCode;
+        } else {
+          ralCodeVal = fullCode;
+        }
+      } else {
+        hexOnly = colorHexResultForm3;
+      }
+
       const queryParams = new URLSearchParams({
-        option: optionForm3,
-        customerName: customerNameForm3,
-        colorHex: colorHexResultForm3,
-        formula: formulaInputForm3,
-        userLogin: username || 'admin'
+        userLogin: username.trim(), // Tên sheet tương ứng (admin hoặc User Login 1..20)
+        customerName: customerNameForm3 || '',
+        ralCode: ralCodeVal,
+        pantoneCode: pantoneCodeVal,
+        colorHex: hexOnly,
+        formula: formulaInputForm3
       });
 
-      // Tạo một Image hoặc dùng fetch với no-cors để gọi ngầm URL kèm tham số GET
       const targetUrl = `${baseUrl}?${queryParams.toString()}`;
-      
       fetch(targetUrl, { mode: 'no-cors' }).catch(() => {});
 
       // Đồng bộ tạm vào state để Form 2 đọc được ngay lập tức
-      const parts = colorHexResultForm3.split(',');
-      const fullCode = parts[0] || '';
-
       const newFormulaRecord = {
         SYSTEM: optionForm3,
         CUSTOMER_NAME: customerNameForm3,
-        CODE: fullCode,
-        COLOR_CODE: fullCode,
+        CODE: ralCodeVal || pantoneCodeVal,
+        COLOR_CODE: ralCodeVal || pantoneCodeVal,
         FORMULA: formulaInputForm3,
         BASE_VOLUME: '1000',
       };
       
       setCustomSavedFormulas((prev) => [newFormulaRecord, ...prev]);
 
-      alert('Đã lưu thành công vào Google Sheet!');
+      alert('Đã lưu thành công vào Google Sheet (Sheet tương ứng với tài khoản)!');
       handleResetForm3();
     } catch (error) {
       console.error('Lỗi lưu Google Sheet:', error);
@@ -371,13 +404,13 @@ function App() {
             </div>
             <form onSubmit={handleLogin}>
               <div style={styles.fieldGroup}>
-                <label style={styles.label}>TÊN ĐĂNG NHẬP:</label>
+                <label style={styles.label}>TÊN ĐĂNG NHẬP (admin hoặc User Login 1 - 20):</label>
                 <input
                   type="text"
                   style={styles.textInput}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Nhập tên đăng nhập..."
+                  placeholder="Ví dụ: admin hoặc User Login 1"
                   required
                 />
               </div>
@@ -405,6 +438,7 @@ function App() {
             <div style={styles.headerBlock}>
               <img src="/logo-buxda.png" alt="Logo BUXDA" style={styles.logoImgHeader} />
               <h2 style={styles.formTitleHeader}>TRA CỨU CÔNG THỨC MÀU</h2>
+              <span style={{ fontSize: '11px', color: '#2b6cb0', fontWeight: 'bold' }}>Tài khoản: {username}</span>
             </div>
 
             <div style={styles.fieldGroup}>
@@ -504,6 +538,7 @@ function App() {
             <div style={styles.headerBlock}>
               <img src="/logo-buxda.png" alt="Logo BUXDA" style={styles.logoImgHeader} />
               <h2 style={styles.formTitleHeader}>CẬP NHẬT CÔNG THỨC MỚI</h2>
+              <span style={{ fontSize: '11px', color: '#2b6cb0', fontWeight: 'bold' }}>Đang ghi vào Sheet: {username}</span>
             </div>
 
             <div style={styles.fieldGroup}>
@@ -520,14 +555,13 @@ function App() {
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>TÊN KHÁCH HÀNG:</label>
+              <label style={styles.label}>TÊN KHÁCH HÀNG (Cột A):</label>
               <input
                 type="text"
-                style={optionForm3 === 'KHÁCH HÀNG' ? styles.textInput : styles.disabledInput}
-                disabled={optionForm3 !== 'KHÁCH HÀNG'}
+                style={styles.textInput}
                 value={customerNameForm3}
                 onChange={(e) => setCustomerNameForm3(e.target.value)}
-                placeholder={optionForm3 === 'KHÁCH HÀNG' ? 'Nhập tên khách hàng...' : 'Mặc định ẩn'}
+                placeholder="Nhập tên khách hàng..."
               />
             </div>
 
@@ -555,7 +589,7 @@ function App() {
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>MÀU / MÃ HEX:</label>
+              <label style={styles.label}>MÀU / MÃ HEX (Cột B/C & Cột D):</label>
               <input
                 type="text"
                 style={styles.textInput}
@@ -582,7 +616,7 @@ function App() {
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>NHẬP CÔNG THỨC:</label>
+              <label style={styles.label}>NHẬP CÔNG THỨC (Cột E):</label>
               <textarea
                 rows={5}
                 style={styles.textAreaInput}
