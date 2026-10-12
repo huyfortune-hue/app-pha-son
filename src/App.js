@@ -318,7 +318,7 @@ function App() {
     }
   };
 
-  // NÚT LƯU CÔNG THỨC (SỬ DỤNG FETCH URLENCODED VỚI NO-CORS ĐỂ GHI TRỰC TIẾP VÀO GOOGLE SHEET)
+  // NÚT LƯU CÔNG THỨC (GHI VÀO GOOGLE SHEET THÔNG QUA GET QUERY PARAMS)
   const handleSaveForm3 = async () => {
     if (!formulaInputForm3) {
       alert('Vui lòng nhập công thức pha màu!');
@@ -350,21 +350,20 @@ function App() {
         hexOnly = colorHexResultForm3;
       }
 
-      const formData = new URLSearchParams();
-      formData.append('userLogin', username.trim());
-      formData.append('customerName', customerNameForm3 || '');
-      formData.append('ralCode', ralCodeVal);
-      formData.append('pantoneCode', pantoneCodeVal);
-      formData.append('colorHex', hexOnly);
-      formData.append('formula', formulaInputForm3);
+      const queryParams = new URLSearchParams({
+        userLogin: username.trim(),
+        customerName: customerNameForm3 || '',
+        ralCode: ralCodeVal,
+        pantoneCode: pantoneCodeVal,
+        colorHex: hexOnly,
+        formula: formulaInputForm3
+      });
 
-      await fetch(scriptUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData.toString()
+      const targetUrl = `${scriptUrl}?${queryParams.toString()}`;
+
+      await fetch(targetUrl, {
+        method: 'GET',
+        mode: 'no-cors'
       });
 
       // Đồng bộ tạm vào state để Form 2 đọc được ngay lập tức
