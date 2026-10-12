@@ -5,7 +5,7 @@ function App() {
   const [currentForm, setCurrentForm] = useState('form1');
 
   // ---------------------------------------------------------------------------
-  // 1. DANH SÁCH 21 TÀI KHOẢN (ADMIN + USER LOGIN 1 ĐẾN 20)
+  // 1. DANH SÁCH 21 TÀI KHOẢN ĐĂNG NHẬP (ADMIN + USER LOGIN 1 ĐẾN 20)
   // ---------------------------------------------------------------------------
   const accountsDatabase = {
     admin: 'admin123@',
@@ -318,15 +318,15 @@ function App() {
     }
   };
 
-  // NÚT LƯU CÔNG THỨC (GHI TRỰC TIẾP VÀO GOOGLE SHEET QUA HIDDEN FORM SUBMIT)
-  const handleSaveForm3 = () => {
+  // NÚT LƯU CÔNG THỨC (SỬ DỤNG FETCH URLENCODED VỚI NO-CORS ĐỂ GHI TRỰC TIẾP VÀO GOOGLE SHEET)
+  const handleSaveForm3 = async () => {
     if (!formulaInputForm3) {
       alert('Vui lòng nhập công thức pha màu!');
       return;
     }
 
     try {
-      alert('Đang gửi dữ liệu lên Google Sheet...');
+      alert('Đang lưu công thức lên Google Sheet...');
 
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbwMXliod0Uyh4mKX1YdCLrj2wyxWs86wXLw3yGD7yoZQhTqGmYOAtnhwTWgyPB9_WSh/exec';
 
@@ -350,41 +350,22 @@ function App() {
         hexOnly = colorHexResultForm3;
       }
 
-      // Tạo thẻ form ẩn để submit dữ liệu vượt qua CORS
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = scriptUrl;
-      form.target = 'hidden_iframe';
+      const formData = new URLSearchParams();
+      formData.append('userLogin', username.trim());
+      formData.append('customerName', customerNameForm3 || '');
+      formData.append('ralCode', ralCodeVal);
+      formData.append('pantoneCode', pantoneCodeVal);
+      formData.append('colorHex', hexOnly);
+      formData.append('formula', formulaInputForm3);
 
-      const payload = {
-        userLogin: username.trim(),
-        customerName: customerNameForm3 || '',
-        ralCode: ralCodeVal,
-        pantoneCode: pantoneCodeVal,
-        colorHex: hexOnly,
-        formula: formulaInputForm3
-      };
-
-      for (const key in payload) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = payload[key];
-        form.appendChild(input);
-      }
-
-      let iframe = document.getElementById('hidden_iframe');
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.name = 'hidden_iframe';
-        iframe.id = 'hidden_iframe';
-        iframe.style.display = 'none';
-        document.body.appendChild(iframe);
-      }
-
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
+      await fetch(scriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString()
+      });
 
       // Đồng bộ tạm vào state để Form 2 đọc được ngay lập tức
       const newFormulaRecord = {
@@ -398,7 +379,7 @@ function App() {
       
       setCustomSavedFormulas((prev) => [newFormulaRecord, ...prev]);
 
-      alert('Đã lưu thành công vào tab tương ứng trên Google Sheet!');
+      alert('Đã lưu thành công vào tab của tài khoản trên Google Sheet!');
       handleResetForm3();
     } catch (error) {
       console.error('Lỗi lưu Google Sheet:', error);
