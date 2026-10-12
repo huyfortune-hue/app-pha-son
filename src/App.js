@@ -318,7 +318,7 @@ function App() {
     }
   };
 
-  // NÚT LƯU CÔNG THỨC (SỬ DỤNG HIDDEN FORM SUBMIT ĐỂ GHI THẲNG VÀO GOOGLE SHEET 100% THÀNH CÔNG)
+  // NÚT LƯU CÔNG THỨC (GHI TRỰC TIẾP VÀO GOOGLE SHEET QUA HIDDEN FORM SUBMIT)
   const handleSaveForm3 = () => {
     if (!formulaInputForm3) {
       alert('Vui lòng nhập công thức pha màu!');
@@ -350,7 +350,7 @@ function App() {
         hexOnly = colorHexResultForm3;
       }
 
-      // Tạo Form ẩn để submit trực tiếp qua iframe, bỏ qua hoàn toàn chặn CORS của trình duyệt
+      // Tạo thẻ form ẩn để submit dữ liệu vượt qua CORS
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = scriptUrl;
@@ -386,7 +386,7 @@ function App() {
       form.submit();
       document.body.removeChild(form);
 
-      // Đồng bộ vào state để Form 2 đọc được ngay lập tức
+      // Đồng bộ tạm vào state để Form 2 đọc được ngay lập tức
       const newFormulaRecord = {
         SYSTEM: optionForm3,
         CUSTOMER_NAME: customerNameForm3,
@@ -398,7 +398,7 @@ function App() {
       
       setCustomSavedFormulas((prev) => [newFormulaRecord, ...prev]);
 
-      alert('Đã lưu thành công vào tab của tài khoản trên Google Sheet!');
+      alert('Đã lưu thành công vào tab tương ứng trên Google Sheet!');
       handleResetForm3();
     } catch (error) {
       console.error('Lỗi lưu Google Sheet:', error);
