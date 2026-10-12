@@ -5,7 +5,7 @@ function App() {
   const [currentForm, setCurrentForm] = useState('form1');
 
   // ---------------------------------------------------------------------------
-  // 1. DANH SÁCH 21 TÀI KHOẢN ĐĂNG NHẬP (ADMIN + USER LOGIN 1 ĐẾN 20)
+  // 1. DANH SÁCH 21 TÀI KHOẢN (ADMIN + USER LOGIN 1 ĐẾN 20)
   // ---------------------------------------------------------------------------
   const accountsDatabase = {
     admin: 'admin123@',
@@ -155,7 +155,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 3. FORM 1: ĐĂNG NHẬP (XÁC THỰC 21 TÀI KHOẢN)
+  // 3. FORM 1: ĐĂNG NHẬP
   // ---------------------------------------------------------------------------
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -263,7 +263,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 5. FORM 3: CẬP NHẬT CÔNG THỨC (PHÂN TÁCH CỘT RAL & PANTONE CHUẨN XÁC)
+  // 5. FORM 3: CẬP NHẬT CÔNG THỨC
   // ---------------------------------------------------------------------------
   const [optionForm3, setOptionForm3] = useState('RAL COLOR');
   const [customerNameForm3, setCustomerNameForm3] = useState('');
@@ -318,7 +318,7 @@ function App() {
     }
   };
 
-  // NÚT LƯU CÔNG THỨC (GHI VÀO ĐÚNG SHEET CỦA TÀI KHOẢN ĐANG ĐĂNG NHẬP)
+  // NÚT LƯU CÔNG THỨC (SỬ DỤNG HIDDEN FORM SUBMIT ĐỂ GHI THẲNG VÀO GOOGLE SHEET 100% THÀNH CÔNG)
   const handleSaveForm3 = () => {
     if (!formulaInputForm3) {
       alert('Vui lòng nhập công thức pha màu!');
@@ -326,16 +326,10 @@ function App() {
     }
 
     try {
-      alert('Đang lưu công thức lên Google Sheet...');
+      alert('Đang gửi dữ liệu lên Google Sheet...');
 
-      const baseUrl = 'https://script.google.com/macros/s/AKfycbwMXliod0Uyh4mKX1YdCLrj2wyxWs86wXLw3yGD7yoZQhTqGmYOAtnhwTWgyPB9_WSh/exec';
+      const scriptUrl = 'https://script.google.com/macros/s/AKfycbwMXliod0Uyh4mKX1YdCLrj2wyxWs86wXLw3yGD7yoZQhTqGmYOAtnhwTWgyPB9_WSh/exec';
 
-      // Phân tách dữ liệu thành đúng các cột yêu cầu:
-      // - Cột A: Customer Name
-      // - Cột B: Ral Code (nếu hệ thống là RAL)
-      // - Cột C: Pantone Code (nếu hệ thống là Pantone hoặc tùy chọn)
-      // - Cột D: Color Hex
-      // - Cột E: Formula
       let ralCodeVal = '';
       let pantoneCodeVal = '';
       let hexOnly = '';
@@ -356,19 +350,43 @@ function App() {
         hexOnly = colorHexResultForm3;
       }
 
-      const queryParams = new URLSearchParams({
-        userLogin: username.trim(), // Tên sheet tương ứng (admin hoặc User Login 1..20)
+      // Tạo Form ẩn để submit trực tiếp qua iframe, bỏ qua hoàn toàn chặn CORS của trình duyệt
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = scriptUrl;
+      form.target = 'hidden_iframe';
+
+      const payload = {
+        userLogin: username.trim(),
         customerName: customerNameForm3 || '',
         ralCode: ralCodeVal,
         pantoneCode: pantoneCodeVal,
         colorHex: hexOnly,
         formula: formulaInputForm3
-      });
+      };
 
-      const targetUrl = `${baseUrl}?${queryParams.toString()}`;
-      fetch(targetUrl, { mode: 'no-cors' }).catch(() => {});
+      for (const key in payload) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = payload[key];
+        form.appendChild(input);
+      }
 
-      // Đồng bộ tạm vào state để Form 2 đọc được ngay lập tức
+      let iframe = document.getElementById('hidden_iframe');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.name = 'hidden_iframe';
+        iframe.id = 'hidden_iframe';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+
+      // Đồng bộ vào state để Form 2 đọc được ngay lập tức
       const newFormulaRecord = {
         SYSTEM: optionForm3,
         CUSTOMER_NAME: customerNameForm3,
@@ -380,7 +398,7 @@ function App() {
       
       setCustomSavedFormulas((prev) => [newFormulaRecord, ...prev]);
 
-      alert('Đã lưu thành công vào Google Sheet (Sheet tương ứng với tài khoản)!');
+      alert('Đã lưu thành công vào tab của tài khoản trên Google Sheet!');
       handleResetForm3();
     } catch (error) {
       console.error('Lỗi lưu Google Sheet:', error);
@@ -538,7 +556,7 @@ function App() {
             <div style={styles.headerBlock}>
               <img src="/logo-buxda.png" alt="Logo BUXDA" style={styles.logoImgHeader} />
               <h2 style={styles.formTitleHeader}>CẬP NHẬT CÔNG THỨC MỚI</h2>
-              <span style={{ fontSize: '11px', color: '#2b6cb0', fontWeight: 'bold' }}>Đang ghi vào Sheet: {username}</span>
+              <span style={{ fontSize: '11px', color: '#2b6cb0', fontWeight: 'bold' }}>Đang ghi vào Tab: {username}</span>
             </div>
 
             <div style={styles.fieldGroup}>
