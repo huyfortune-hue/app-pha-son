@@ -1,6 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 
+// ---------------------------------------------------------------------------
+// CẤU HÌNH CHUNG
+// ---------------------------------------------------------------------------
+// URL Web App của Google Apps Script (bản triển khai /exec)
+const SCRIPT_URL =
+  'https://script.google.com/macros/s/AKfycbwMXliod0Uyh4mKX1YdCLrj2wyxWs86wXLw3yGD7yoZQhTqGmYOAtnhwTWgyPB9_WSh/exec';
+
+// Công thức lưu trong Google Sheet được hiểu là công thức của 1000 gram
+const BASE_VOLUME = 1000;
+
+// Tính lại khối lượng từng dòng công thức theo số gram cần pha
+const scaleFormula = (rawFormula, baseVol, targetVol) => {
+  const ratio = targetVol / baseVol;
+  if (!rawFormula || ratio === 1) return rawFormula;
+  return rawFormula
+    .split(/\r?\n/)
+    .map((line) => {
+      const parts = line.split(',');
+      if (parts.length === 2) {
+        const weight = parseFloat(parts[1]);
+        if (!isNaN(weight)) {
+          return `${parts[0].trim()}, ${(weight * ratio).toFixed(2)}`;
+        }
+      }
+      return line;
+    })
+    .join('\n');
+};
+
 function App() {
   const [currentForm, setCurrentForm] = useState('form1');
 
@@ -15,15 +44,10 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 2. DATA CACHE & CUSTOM SAVED FORMULAS
+  // 2. DATA CACHE MÃ HEX (CSV LOCAL, DÙNG CHO FORM 3)
   // ---------------------------------------------------------------------------
   const [ralHexCache, setRalHexCache] = useState([]);
   const [pantoneHexCache, setPantoneHexCache] = useState([]);
-  const [ralFormulas, setRalFormulas] = useState([]);
-  const [pantoneFormulas, setPantoneFormulas] = useState([]);
-  const [customerFormulas, setCustomerFormulas] = useState([]);
-  
-  const [customSavedFormulas, setCustomSavedFormulas] = useState([]);
 
   useEffect(() => {
     const loadCsv = (filePath) => {
@@ -32,7 +56,7 @@ function App() {
           download: true,
           header: true,
           skipEmptyLines: 'greedy',
-          trimHeaders: true,
+          transformHeader: (h) => h.trim(),
           complete: (res) => {
             const validData = (res.data || []).filter((row) => Object.keys(row).length > 0);
             resolve(validData);
@@ -45,15 +69,9 @@ function App() {
     Promise.all([
       loadCsv('/RAL_HEX_CACHE_2.csv'),
       loadCsv('/PANTONE_HEX_CACHE_4.csv'),
-      loadCsv('/RAL_COLOR.csv'),
-      loadCsv('/PANTONE_COLOR.csv'),
-      loadCsv('/CUSTOMER_DATA.csv'),
-    ]).then(([ralHex, panHex, ralForm, panForm, custForm]) => {
+    ]).then(([ralHex, panHex]) => {
       setRalHexCache(ralHex);
       setPantoneHexCache(panHex);
-      setRalFormulas(ralForm);
-      setPantoneFormulas(panForm);
-      setCustomerFormulas(custForm);
     });
   }, []);
 
@@ -62,6 +80,9 @@ function App() {
       .toLowerCase()
       .replace(/[\[\]'"\s\-_]/g, '');
   };
+
+  // "RAL-1003" / "ral 1003" / "1003" -> "1003"
+  const stripPrefix = (s) => cleanSearchString(s).replace(/^(ral|pantone)/, '');
 
   const extractDigits = (str) => {
     const num = String(str || '').match(/\d+/);
@@ -132,7 +153,7 @@ function App() {
     try {
       const cleanQ = query.trim().toUpperCase();
       let searchKey = cleanQ;
-      
+
       if (systemType === 'PANTONE') {
         searchKey = cleanQ.startsWith('PANTONE') ? cleanQ : `PANTONE ${cleanQ}`;
       } else if (systemType === 'RAL') {
@@ -140,7 +161,7 @@ function App() {
       }
 
       const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(`https://encycolorpedia.com/p/search?q=${searchKey}`)}`);
-      
+
       if (res.ok) {
         const text = await res.text();
         const hexMatches = text.match(/#([0-9A-Fa-f]{6})/g);
@@ -171,7 +192,7 @@ function App() {
   };
 
   // ---------------------------------------------------------------------------
-  // 4. FORM 2: TRA CỨU MÀU
+  // 4. FORM 2: TRA CỨU MÀU (ĐỌC TỪ GOOGLE SHEET CỦA TÀI KHOẢN ĐANG ĐĂNG NHẬP)
   // ---------------------------------------------------------------------------
   const [colorSystem, setColorSystem] = useState('RAL COLOR');
   const [colorCode, setColorCode] = useState('');
@@ -180,6 +201,7 @@ function App() {
 
   const [displayHex, setDisplayHex] = useState('#FFFFFF');
   const [searchResultFormula, setSearchResultFormula] = useState('');
+  const [isSearchingForm2, setIsSearchingForm2] = useState(false);
 
   const handleResetForm2 = () => {
     setColorSystem('RAL COLOR');
@@ -191,74 +213,83 @@ function App() {
   };
 
   const handleSearchForm2 = async () => {
-    if (!colorCode.trim()) {
+    const isCustomer = colorSystem === 'KHÁCH HÀNG';
+    const isPantone = colorSystem === 'PANTONE COLOR';
+
+    if (isCustomer && !customerNameForm2.trim()) {
+      alert('Vui lòng nhập tên khách hàng!');
+      return;
+    }
+    if (!isCustomer && !colorCode.trim()) {
       alert('Vui lòng nhập mã màu!');
       return;
     }
-
-    let targetList = [];
-    let targetCache = [];
-
-    if (colorSystem === 'RAL COLOR') {
-      targetList = ralFormulas;
-      targetCache = ralHexCache;
-    } else if (colorSystem === 'PANTONE COLOR') {
-      targetList = pantoneFormulas;
-      targetCache = pantoneHexCache;
-    } else {
-      targetList = customerFormulas;
-      targetCache = [...ralHexCache, ...pantoneHexCache];
+    const targetVol = parseFloat(volumeGram);
+    if (!targetVol || targetVol <= 0) {
+      alert('Vui lòng nhập số gram hợp lệ!');
+      return;
     }
 
-    const foundHexItem = findInLocalCache(colorCode, targetCache);
-    if (foundHexItem) {
-      setDisplayHex(extractHexFromRow(foundHexItem));
-    } else {
-      const onlineHex = await fetchOnlineHex(colorCode, colorSystem === 'PANTONE COLOR' ? 'PANTONE' : 'RAL');
-      if (onlineHex) {
-        setDisplayHex(onlineHex);
-      } else {
-        setDisplayHex('#CCCCCC');
-      }
-    }
+    setIsSearchingForm2(true);
+    setSearchResultFormula('Đang tải dữ liệu từ Google Sheet...');
 
-    const cleanKw = cleanSearchString(colorCode);
-    const combinedList = [...customSavedFormulas, ...targetList];
+    try {
+      const res = await fetch(`${SCRIPT_URL}?userLogin=${encodeURIComponent(username.trim())}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Không đọc được dữ liệu');
+      const rows = data.rows;
 
-    const foundFormulaItem = combinedList.find((item) => {
-      const matchCode = Object.values(item).some((v) => cleanSearchString(v).includes(cleanKw));
-      if (colorSystem === 'KHÁCH HÀNG' && customerNameForm2.trim()) {
-        const matchName = String(item.CUSTOMER_NAME || item.customerName || '').toLowerCase().includes(customerNameForm2.trim().toLowerCase());
-        return matchCode && matchName;
-      }
-      return matchCode;
-    });
+      let matches = [];
 
-    if (foundFormulaItem) {
-      let rawFormula = foundFormulaItem.FORMULA || foundFormulaItem.formula || '';
-      const baseVol = parseFloat(foundFormulaItem.BASE_VOLUME || 1000);
-      const targetVol = parseFloat(volumeGram) || 1000;
-      const ratio = targetVol / baseVol;
-
-      if (ratio !== 1 && rawFormula) {
-        const lines = rawFormula.split('\n');
-        const recalculatedLines = lines.map((line) => {
-          const parts = line.split(',');
-          if (parts.length === 2) {
-            const code = parts[0].trim();
-            const weight = parseFloat(parts[1]);
-            if (!isNaN(weight)) {
-              return `${code}, ${(weight * ratio).toFixed(2)}`;
-            }
-          }
-          return line;
+      if (isCustomer) {
+        // MÀU KHÁCH HÀNG: đọc cột A, B, C, D, E (mã màu có thể để trống)
+        const nameKw = cleanSearchString(customerNameForm2);
+        const codeKw = stripPrefix(colorCode);
+        matches = rows.filter((r) => {
+          const nameOk = cleanSearchString(r.customerName).includes(nameKw);
+          const codeOk =
+            !codeKw ||
+            stripPrefix(r.ralCode).includes(codeKw) ||
+            stripPrefix(r.pantoneCode).includes(codeKw);
+          return nameOk && codeOk;
         });
-        rawFormula = recalculatedLines.join('\n');
+      } else {
+        // MÀU RAL: cột B, D, E | MÀU PANTONE: cột C, D, E
+        // Chỉ lấy các dòng không thuộc khách hàng nào
+        const codeKey = isPantone ? 'pantoneCode' : 'ralCode';
+        const kw = stripPrefix(colorCode);
+        const pool = rows.filter((r) => !r.customerName.trim() && r[codeKey].trim());
+        const exact = pool.filter((r) => stripPrefix(r[codeKey]) === kw);
+        matches = exact.length > 0 ? exact : pool.filter((r) => stripPrefix(r[codeKey]).startsWith(kw));
       }
 
-      setSearchResultFormula(rawFormula);
-    } else {
-      setSearchResultFormula('Không tìm thấy công thức cho mã màu này!');
+      if (matches.length === 0) {
+        setSearchResultFormula(
+          `Không tìm thấy công thức phù hợp!\n(Đã đọc ${rows.length} dòng từ tab "${username.trim()}")`
+        );
+        setDisplayHex('#FFFFFF');
+        return;
+      }
+
+      const blocks = matches.map((r, i) => {
+        const head = isCustomer
+          ? [r.customerName, r.ralCode, r.pantoneCode, r.colorHex].filter(Boolean).join(' | ')
+          : [isPantone ? r.pantoneCode : r.ralCode, r.colorHex].filter(Boolean).join(' | ');
+        const prefix = matches.length > 1 ? `[${i + 1}] ` : '';
+        return `${prefix}${head}\n${scaleFormula(r.formula.trim(), BASE_VOLUME, targetVol)}`;
+      });
+      setSearchResultFormula(blocks.join('\n\n--------------------\n\n'));
+
+      // Màu xem trước lấy từ cột D của kết quả đầu tiên có mã HEX
+      const hexItem = matches
+        .map((r) => (r.colorHex.match(/#[0-9A-Fa-f]{6}/) || [])[0])
+        .find(Boolean);
+      setDisplayHex(hexItem ? hexItem.toUpperCase() : '#CCCCCC');
+    } catch (err) {
+      console.error(err);
+      setSearchResultFormula('Lỗi khi đọc dữ liệu: ' + err.message);
+    } finally {
+      setIsSearchingForm2(false);
     }
   };
 
@@ -320,14 +351,22 @@ function App() {
 
   // NÚT LƯU CÔNG THỨC (GHI VÀO GOOGLE SHEET THÔNG QUA HIDDEN FORM SUBMIT)
   const handleSaveForm3 = () => {
-    if (!formulaInputForm3) {
+    const isCustomer = optionForm3 === 'KHÁCH HÀNG';
+
+    if (!formulaInputForm3.trim()) {
       alert('Vui lòng nhập công thức pha màu!');
+      return;
+    }
+    if (isCustomer && !customerNameForm3.trim()) {
+      alert('Vui lòng nhập tên khách hàng!');
+      return;
+    }
+    if (!isCustomer && !colorHexResultForm3.trim()) {
+      alert('Vui lòng nhập hoặc tìm mã màu (VD: RAL-7035,#CBD0CC)!');
       return;
     }
 
     try {
-      const scriptUrl = 'https://script.google.com/macros/s/AKfycbwMXliod0Uyh4mKX1YdCLrj2wyxWs86wXLw3yGD7yoZQhTqGmYOAtnhwTWgyPB9_WSh/exec';
-
       let ralCodeVal = '';
       let pantoneCodeVal = '';
       let hexOnly = '';
@@ -335,32 +374,34 @@ function App() {
       if (colorHexResultForm3.includes(',')) {
         const parts = colorHexResultForm3.split(',');
         const fullCode = parts[0].trim();
-        hexOnly = parts[1].trim();
+        hexOnly = (parts[1] || '').trim();
 
-        if (optionForm3.toUpperCase().includes('RAL') || fullCode.startsWith('RAL')) {
+        if (optionForm3.toUpperCase().includes('RAL') || fullCode.toUpperCase().startsWith('RAL')) {
           ralCodeVal = fullCode;
-        } else if (optionForm3.toUpperCase().includes('PANTONE') || fullCode.startsWith('PANTONE')) {
+        } else if (optionForm3.toUpperCase().includes('PANTONE') || fullCode.toUpperCase().startsWith('PANTONE')) {
           pantoneCodeVal = fullCode;
         } else {
           ralCodeVal = fullCode;
         }
       } else {
-        hexOnly = colorHexResultForm3;
+        hexOnly = colorHexResultForm3.trim();
       }
 
       // Tạo Form ẩn để submit trực tiếp qua trình duyệt (bỏ qua mọi lỗi CORS)
       const form = document.createElement('form');
       form.method = 'POST';
-      form.action = scriptUrl;
+      form.action = SCRIPT_URL;
       form.target = 'hidden_iframe';
 
       const payload = {
         userLogin: username.trim(),
-        customerName: customerNameForm3 || '',
+        // Chỉ lưu tên khách hàng khi chọn MÀU KHÁCH HÀNG
+        customerName: isCustomer ? customerNameForm3.trim() : '',
         ralCode: ralCodeVal,
         pantoneCode: pantoneCodeVal,
         colorHex: hexOnly,
-        formula: formulaInputForm3
+        formula: formulaInputForm3.trim(),
+        system: optionForm3,
       };
 
       for (const key in payload) {
@@ -384,19 +425,7 @@ function App() {
       form.submit();
       document.body.removeChild(form);
 
-      // Đồng bộ tạm vào state để Form 2 đọc được ngay lập tức
-      const newFormulaRecord = {
-        SYSTEM: optionForm3,
-        CUSTOMER_NAME: customerNameForm3,
-        CODE: ralCodeVal || pantoneCodeVal,
-        COLOR_CODE: ralCodeVal || pantoneCodeVal,
-        FORMULA: formulaInputForm3,
-        BASE_VOLUME: '1000',
-      };
-      
-      setCustomSavedFormulas((prev) => [newFormulaRecord, ...prev]);
-
-      alert('Đã gửi thành công dữ liệu vào Google Sheet!');
+      alert('Đã gửi dữ liệu vào Google Sheet! Hãy kiểm tra lại tab của tài khoản để chắc chắn đã có dòng mới.');
       handleResetForm3();
     } catch (error) {
       console.error('Lỗi lưu Google Sheet:', error);
@@ -483,7 +512,9 @@ function App() {
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>MÃ MÀU:</label>
+              <label style={styles.label}>
+                MÃ MÀU{colorSystem === 'KHÁCH HÀNG' ? ' (có thể để trống):' : ':'}
+              </label>
               <input
                 type="text"
                 style={styles.textInput}
@@ -523,7 +554,7 @@ function App() {
             <div style={styles.fieldGroup}>
               <label style={styles.label}>CÔNG THỨC PHA MÀU:</label>
               <textarea
-                rows={7}
+                rows={10}
                 readOnly
                 style={{ ...styles.textAreaInput, backgroundColor: '#f8f9fa' }}
                 value={searchResultFormula}
@@ -532,8 +563,12 @@ function App() {
             </div>
 
             <div style={styles.actionButtonsRow}>
-              <button style={{ ...styles.actionBtn, backgroundColor: '#28a745' }} onClick={handleSearchForm2}>
-                TÌM KIẾM
+              <button
+                style={{ ...styles.actionBtn, backgroundColor: isSearchingForm2 ? '#6c757d' : '#28a745' }}
+                onClick={handleSearchForm2}
+                disabled={isSearchingForm2}
+              >
+                {isSearchingForm2 ? 'ĐANG TÌM...' : 'TÌM KIẾM'}
               </button>
               <button style={{ ...styles.actionBtn, backgroundColor: '#e5a500' }} onClick={handleResetForm2}>
                 LÀM MỚI
@@ -574,10 +609,11 @@ function App() {
               <label style={styles.label}>TÊN KHÁCH HÀNG (Cột A):</label>
               <input
                 type="text"
-                style={styles.textInput}
+                style={optionForm3 === 'KHÁCH HÀNG' ? styles.textInput : styles.disabledInput}
+                disabled={optionForm3 !== 'KHÁCH HÀNG'}
                 value={customerNameForm3}
                 onChange={(e) => setCustomerNameForm3(e.target.value)}
-                placeholder="Nhập tên khách hàng..."
+                placeholder={optionForm3 === 'KHÁCH HÀNG' ? 'Nhập tên khách hàng...' : 'Chỉ nhập khi chọn MÀU KHÁCH HÀNG'}
               />
             </div>
 
@@ -685,7 +721,7 @@ const styles = {
     overflow: 'hidden',
     border: '1px solid #dcdfe6',
   },
-  formContainer: { 
+  formContainer: {
     padding: '20px 18px',
   },
   headerBlock: {
