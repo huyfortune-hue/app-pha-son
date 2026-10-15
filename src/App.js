@@ -318,16 +318,14 @@ function App() {
     }
   };
 
-  // NÚT LƯU CÔNG THỨC (GHI VÀO GOOGLE SHEET THÔNG QUA GET QUERY PARAMS)
-  const handleSaveForm3 = async () => {
+  // NÚT LƯU CÔNG THỨC (GHI VÀO GOOGLE SHEET THÔNG QUA HIDDEN FORM SUBMIT)
+  const handleSaveForm3 = () => {
     if (!formulaInputForm3) {
       alert('Vui lòng nhập công thức pha màu!');
       return;
     }
 
     try {
-      alert('Đang lưu công thức lên Google Sheet...');
-
       const scriptUrl = 'https://script.google.com/macros/s/AKfycbwMXliod0Uyh4mKX1YdCLrj2wyxWs86wXLw3yGD7yoZQhTqGmYOAtnhwTWgyPB9_WSh/exec';
 
       let ralCodeVal = '';
@@ -350,21 +348,41 @@ function App() {
         hexOnly = colorHexResultForm3;
       }
 
-      const queryParams = new URLSearchParams({
+      // Tạo Form ẩn để submit trực tiếp qua trình duyệt (bỏ qua mọi lỗi CORS)
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = scriptUrl;
+      form.target = 'hidden_iframe';
+
+      const payload = {
         userLogin: username.trim(),
         customerName: customerNameForm3 || '',
         ralCode: ralCodeVal,
         pantoneCode: pantoneCodeVal,
         colorHex: hexOnly,
         formula: formulaInputForm3
-      });
+      };
 
-      const targetUrl = `${scriptUrl}?${queryParams.toString()}`;
+      for (const key in payload) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = payload[key];
+        form.appendChild(input);
+      }
 
-      await fetch(targetUrl, {
-        method: 'GET',
-        mode: 'no-cors'
-      });
+      let iframe = document.getElementById('hidden_iframe');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.name = 'hidden_iframe';
+        iframe.id = 'hidden_iframe';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
 
       // Đồng bộ tạm vào state để Form 2 đọc được ngay lập tức
       const newFormulaRecord = {
@@ -378,7 +396,7 @@ function App() {
       
       setCustomSavedFormulas((prev) => [newFormulaRecord, ...prev]);
 
-      alert('Đã lưu thành công vào tab của tài khoản trên Google Sheet!');
+      alert('Đã gửi thành công dữ liệu vào Google Sheet!');
       handleResetForm3();
     } catch (error) {
       console.error('Lỗi lưu Google Sheet:', error);
