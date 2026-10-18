@@ -8,26 +8,54 @@ import Papa from 'papaparse';
 const SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycbwMXliod0Uyh4mKX1YdCLrj2wyxWs86wXLw3yGD7yoZQhTqGmYOAtnhwTWgyPB9_WSh/exec';
 
-// Công thức lưu trong Google Sheet được hiểu là công thức của 1000 gram
-const BASE_VOLUME = 1000;
+// Độ rộng mỗi dòng trong bảng công thức (số ký tự)
+const LINE_WIDTH = 26;
 
-// Tính lại khối lượng từng dòng công thức theo số gram cần pha
-const scaleFormula = (rawFormula, baseVol, targetVol) => {
-  const ratio = targetVol / baseVol;
-  if (!rawFormula || ratio === 1) return rawFormula;
-  return rawFormula
-    .split(/\r?\n/)
-    .map((line) => {
-      const parts = line.split(',');
-      if (parts.length === 2) {
-        const weight = parseFloat(parts[1]);
-        if (!isNaN(weight)) {
-          return `${parts[0].trim()}, ${(weight * ratio).toFixed(2)}`;
-        }
-      }
-      return line;
-    })
-    .join('\n');
+// Tạo dòng dạng:  BD 02- - - - - - - - 81,60
+const formatFormulaLine = (code, value) => {
+  const room = Math.max(LINE_WIDTH - code.length - value.length, 2);
+  let fill = '';
+  for (let i = 0; i < room; i++) {
+    fill += i === room - 1 ? ' ' : i % 2 === 0 ? '-' : ' ';
+  }
+  return code + fill + value;
+};
+
+// Chia lại công thức sao cho TỔNG khối lượng = số gam cần pha,
+// rồi trình bày thành bảng TINT MÀU / GRAM.
+// Nhận các kiểu nhập: "BD02,100" | "BD 02- - - 81,60" | "BD01......200" | "MC-4400, 2.7"
+const scaleFormula = (rawFormula, targetVol) => {
+  if (!rawFormula) return rawFormula;
+
+  const items = [];
+  const others = [];
+
+  rawFormula.split(/\r?\n/).forEach((line) => {
+    if (!line.trim() || /^\s*tint/i.test(line)) return; // bỏ dòng trống và dòng tiêu đề cũ
+
+    const m = line.match(/^(.*?)[\s.,:;=-]+(\d+(?:[.,]\d+)?)\s*$/);
+    const code = m ? m[1].trim() : '';
+    if (!m || !/[A-Za-z0-9]/.test(code)) {
+      others.push(line);
+      return;
+    }
+
+    items.push({
+      code: code.replace(/^([A-Za-z]+)(\d)/, '$1 $2'), // BD02 -> BD 02
+      weight: parseFloat(m[2].replace(',', '.')),
+    });
+  });
+
+  const total = items.reduce((sum, it) => sum + it.weight, 0);
+  if (items.length === 0 || total <= 0) return rawFormula;
+
+  const ratio = targetVol / total;
+  const header = 'TINT MÀU'.padEnd(LINE_WIDTH - 4) + 'GRAM';
+  const body = items.map((it) =>
+    formatFormulaLine(it.code, (it.weight * ratio).toFixed(2).replace('.', ','))
+  );
+
+  return [header, ...body, ...others].join('\n');
 };
 
 function App() {
@@ -235,7 +263,16 @@ function App() {
 
     try {
       const res = await fetch(`${SCRIPT_URL}?userLogin=${encodeURIComponent(username.trim())}`);
-      const data = await res.json();
+      const text = await res.text();
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error(
+          'Apps Script không trả về dữ liệu JSON. Hãy kiểm tra đã triển khai PHIÊN BẢN MỚI có hàm doGet và quyền truy cập là "Bất kỳ ai".'
+        );
+      }
       if (!data.ok) throw new Error(data.error || 'Không đọc được dữ liệu');
       const rows = data.rows;
 
@@ -276,7 +313,7 @@ function App() {
           ? [r.customerName, r.ralCode, r.pantoneCode, r.colorHex].filter(Boolean).join(' | ')
           : [isPantone ? r.pantoneCode : r.ralCode, r.colorHex].filter(Boolean).join(' | ');
         const prefix = matches.length > 1 ? `[${i + 1}] ` : '';
-        return `${prefix}${head}\n${scaleFormula(r.formula.trim(), BASE_VOLUME, targetVol)}`;
+        return `${prefix}${head}\n${scaleFormula(r.formula.trim(), targetVol)}`;
       });
       setSearchResultFormula(blocks.join('\n\n--------------------\n\n'));
 
@@ -357,6 +394,27 @@ function App() {
       alert('Vui lòng nhập công thức pha màu!');
       return;
     }
+
+    // Kiểm tra từng dòng công thức: MÃ,SỐ GAM (ví dụ: BD02,100)
+    const formulaLines = formulaInputForm3
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    const badLine = formulaLines.find((l) => !/^[^,]+,\s*\d+(\.\d+)?$/.test(l));
+    if (badLine) {
+      alert(`Dòng công thức sai định dạng: "${badLine}"\nĐúng định dạng: MÃ,SỐ GAM (ví dụ: BD02,100)`);
+      return;
+    }
+
+    // Chuẩn hóa: bỏ khoảng trắng thừa quanh dấu phẩy
+    const cleanFormula = formulaLines
+      .map((l) => {
+        const [code, weight] = l.split(',');
+        return `${code.trim()},${weight.trim()}`;
+      })
+      .join('\n');
+
     if (isCustomer && !customerNameForm3.trim()) {
       alert('Vui lòng nhập tên khách hàng!');
       return;
@@ -400,7 +458,7 @@ function App() {
         ralCode: ralCodeVal,
         pantoneCode: pantoneCodeVal,
         colorHex: hexOnly,
-        formula: formulaInputForm3.trim(),
+        formula: cleanFormula,
         system: optionForm3,
       };
 
@@ -556,7 +614,7 @@ function App() {
               <textarea
                 rows={10}
                 readOnly
-                style={{ ...styles.textAreaInput, backgroundColor: '#f8f9fa' }}
+                style={{ ...styles.textAreaInput, backgroundColor: '#f8f9fa', whiteSpace: 'pre', overflowX: 'auto' }}
                 value={searchResultFormula}
                 placeholder="Kết quả công thức pha màu sẽ hiển thị tại đây..."
               />
@@ -672,7 +730,7 @@ function App() {
               <textarea
                 rows={5}
                 style={styles.textAreaInput}
-                placeholder={"Ví dụ:\nMC-4400, 250\nMC-4200, 15\nMC-3000, 2.7"}
+                placeholder={"Ví dụ:\nBD02,100\nBD03,300\nBD04,700"}
                 value={formulaInputForm3}
                 onChange={(e) => setFormulaInputForm3(e.target.value)}
               />
