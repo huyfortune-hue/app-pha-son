@@ -86,6 +86,21 @@ const buildStoredFormula = (lines) => {
     .join('\n');
 };
 
+// ---------------------------------------------------------------------------
+// ĐỔI MẬT KHẨU TÀI KHOẢN
+// Muốn đổi mật khẩu của tài khoản nào thì thêm một dòng vào đây.
+// - Tên tài khoản phải viết đúng như tên tab trong Google Sheet
+//   (admin, User Login 1, ..., User Login 20).
+// - Tài khoản không có trong danh sách này sẽ dùng mật khẩu mặc định.
+// Ví dụ:
+//   'admin': 'MatKhauMoiCuaAdmin',
+//   'User Login 1': 'MatKhauMoi1',
+// ---------------------------------------------------------------------------
+const PASSWORD_OVERRIDES = {
+  // 'admin': 'MatKhauMoiCuaAdmin',
+  // 'User Login 1': 'MatKhauMoi1',
+};
+
 function App() {
   const [currentForm, setCurrentForm] = useState('form1');
 
@@ -96,7 +111,8 @@ function App() {
     admin: 'admin123@',
     ...Object.fromEntries(
       Array.from({ length: 20 }, (_, i) => [`User Login ${i + 1}`, `userpass${i + 1}#`])
-    )
+    ),
+    ...PASSWORD_OVERRIDES
   };
 
   // ---------------------------------------------------------------------------
