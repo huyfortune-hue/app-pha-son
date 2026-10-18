@@ -14,9 +14,10 @@ const LINE_WIDTH = 26;
 // Tạo dòng dạng:  BD 02- - - - - - - - 81,60
 const formatFormulaLine = (code, value) => {
   const room = Math.max(LINE_WIDTH - code.length - value.length, 2);
+  // Dựng từ phải sang trái để luôn kết thúc bằng "- " ngay trước số gam
   let fill = '';
-  for (let i = 0; i < room; i++) {
-    fill += i === room - 1 ? ' ' : i % 2 === 0 ? '-' : ' ';
+  for (let j = 0; j < room; j++) {
+    fill = (j % 2 === 0 ? ' ' : '-') + fill;
   }
   return code + fill + value;
 };
@@ -56,6 +57,33 @@ const scaleFormula = (rawFormula, targetVol) => {
   );
 
   return [header, ...body, ...others].join('\n');
+};
+
+// Tổng khối lượng chuẩn của công thức lưu trên Google Sheet
+const STORED_TOTAL_GRAM = 1000;
+
+// Chuyển các dòng "MÃ,SỐ GAM" (người dùng nhập ở Form 3) thành công thức lưu trên Sheet:
+// tổng = 1000 gam, dạng "BD 02- - - - - - - - 971,87"
+const buildStoredFormula = (lines) => {
+  const items = lines.map((l) => {
+    const [code, weight] = l.split(',');
+    return {
+      code: code.trim().replace(/^([A-Za-z]+)(\d)/, '$1 $2'), // BD02 -> BD 02
+      weight: parseFloat(weight),
+    };
+  });
+
+  const total = items.reduce((sum, it) => sum + it.weight, 0);
+  if (!(total > 0)) return null;
+
+  // Làm tròn 2 chữ số thập phân, dồn phần chênh lệch vào dòng lớn nhất để tổng đúng 1000,00
+  const cents = items.map((it) => Math.round((it.weight / total) * STORED_TOTAL_GRAM * 100));
+  const diff = STORED_TOTAL_GRAM * 100 - cents.reduce((a, b) => a + b, 0);
+  cents[cents.indexOf(Math.max(...cents))] += diff;
+
+  return items
+    .map((it, i) => formatFormulaLine(it.code, (cents[i] / 100).toFixed(2).replace('.', ',')))
+    .join('\n');
 };
 
 function App() {
@@ -407,13 +435,12 @@ function App() {
       return;
     }
 
-    // Chuẩn hóa: bỏ khoảng trắng thừa quanh dấu phẩy
-    const cleanFormula = formulaLines
-      .map((l) => {
-        const [code, weight] = l.split(',');
-        return `${code.trim()},${weight.trim()}`;
-      })
-      .join('\n');
+    // Chuẩn hóa về tổng 1000 gam và trình bày dạng "BD 02- - - - - - - - 971,87"
+    const cleanFormula = buildStoredFormula(formulaLines);
+    if (!cleanFormula) {
+      alert('Tổng số gam của công thức phải lớn hơn 0!');
+      return;
+    }
 
     if (isCustomer && !customerNameForm3.trim()) {
       alert('Vui lòng nhập tên khách hàng!');
