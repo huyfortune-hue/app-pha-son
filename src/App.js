@@ -303,7 +303,7 @@ function App() {
     }
 
     setIsSearchingForm2(true);
-    setSearchResultFormula('Đang tải dữ liệu từ Google Sheet...');
+    setSearchResultFormula('Đang tải dữ liệu ...');
 
     try {
       const res = await fetch(`${SCRIPT_URL}?userLogin=${encodeURIComponent(username.trim())}`);
@@ -425,7 +425,7 @@ function App() {
       setColorHexResultForm3(`${prefix}-${cleanCode},${onlineHex}`);
       setPreviewHexForm3(onlineHex);
     } else {
-      alert(`Không tìm thấy mã HEX cho "${rawKw}" trong file CSV local lẫn trực tuyến!`);
+      alert(`Không tìm thấy mã HEX cho "${rawKw}"!`);
       setPreviewHexForm3('#FFFFFF');
     }
   };
@@ -647,7 +647,7 @@ function App() {
                 />
                 <div style={styles.previewTextGroup}>
                   <div style={{ fontSize: '12px', color: '#666' }}>Mã màu HEX:</div>
-                  <strong style={{ fontSize: '20px', color: '#1a202c' }}>{displayHex}</strong>
+                  <strong style={{ fontSize: '14px', color: '#1a202c' }}>{displayHex}</strong>
                 </div>
               </div>
             </div>
@@ -690,11 +690,11 @@ function App() {
             <div style={styles.headerBlock}>
               <img src="/logo-buxda.png" alt="Logo BUXDA" style={styles.logoImgHeader} />
               <h2 style={styles.formTitleHeader}>CẬP NHẬT CÔNG THỨC MỚI</h2>
-              <span style={{ fontSize: '11px', color: '#2b6cb0', fontWeight: 'bold' }}>Đang ghi vào Tab: {username}</span>
+              <span style={{ fontSize: '11px', color: '#2b6cb0', fontWeight: 'bold' }}>Dữ liệu sẽ được ghi vào: {username}</span>
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>LOẠI HỆ THỐNG:</label>
+              <label style={styles.label}>CHỌN HỆ THỐNG:</label>
               <select
                 style={styles.selectInput}
                 value={optionForm3}
@@ -707,7 +707,7 @@ function App() {
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>TÊN KHÁCH HÀNG (Cột A):</label>
+              <label style={styles.label}>TÊN KHÁCH HÀNG:</label>
               <input
                 type="text"
                 style={optionForm3 === 'KHÁCH HÀNG' ? styles.textInput : styles.disabledInput}
@@ -742,28 +742,28 @@ function App() {
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>MÀU / MÃ HEX:</label>
+              <label style={styles.label}>MÃ MÀU / MÃ HEX:</label>
               <input
                 type="text"
                 style={styles.textInput}
-                placeholder="Ví dụ: RAL-7035,#CBD0CC"
+                placeholder=""
                 value={colorHexResultForm3}
                 onChange={(e) => setColorHexResultForm3(e.target.value)}
               />
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>MÀU XEM TRƯỚC HỆ THỐNG TÌM THẤY:</label>
+              <label style={styles.label}>MÀU XEM TRƯỚC:</label>
               <div style={styles.previewColorRow}>
                 <div
                   style={{
-                    ...styles.previewColorBoxSmall,
+                    ...styles.previewColorBox,
                     backgroundColor: previewHexForm3,
                   }}
                 />
                 <div style={styles.previewTextGroup}>
                   <div style={{ fontSize: '12px', color: '#666' }}>Mã xem trước:</div>
-                  <strong style={{ fontSize: '18px', color: '#1a202c' }}>{previewHexForm3}</strong>
+                  <strong style={{ fontSize: '12px', color: '#1a202c' }}>{previewHexForm3}</strong>
                 </div>
               </div>
             </div>
