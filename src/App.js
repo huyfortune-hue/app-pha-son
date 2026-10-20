@@ -626,7 +626,7 @@ function App() {
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>KÍCH THƯỚC / TRỌNG LƯỢNG (GAM):</label>
+              <label style={styles.label}>TRỌNG LƯỢNG (GAM):</label>
               <input
                 type="number"
                 style={styles.textInput}
@@ -742,7 +742,7 @@ function App() {
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>MÀU / MÃ HEX (Cột B/C & Cột D):</label>
+              <label style={styles.label}>MÀU / MÃ HEX:</label>
               <input
                 type="text"
                 style={styles.textInput}
@@ -769,7 +769,7 @@ function App() {
             </div>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label}>NHẬP CÔNG THỨC (Cột E):</label>
+              <label style={styles.label}>NHẬP CÔNG THỨC:</label>
               <textarea
                 rows={5}
                 style={styles.textAreaInput}
